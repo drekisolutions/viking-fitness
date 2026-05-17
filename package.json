@@ -15,6 +15,7 @@
     "@expo-google-fonts/inter": "^0.4.2",
     "@expo-google-fonts/oswald": "^0.4.2",
     "@expo/vector-icons": "^15.0.3",
+    "@stripe/stripe-js": "^9.5.0",
     "@supabase/supabase-js": "^2.105.4",
     "expo": "~54.0.34",
     "expo-blur": "~15.0.8",
@@ -40,6 +41,7 @@
     "react-native-svg": "15.12.1",
     "react-native-web": "^0.21.0",
     "react-native-worklets": "^0.8.3",
+    "stripe": "^22.1.1",
     "tailwindcss": "^3.4.17",
     "zustand": "^4.5.7"
   },
