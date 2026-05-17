@@ -6,11 +6,15 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
+  Alert,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Settings, ChevronRight, Target, Utensils, Bell, Shield, LogOut, CreditCard as Edit3 } from 'lucide-react-native';
 import { useOnboardingStore } from '@/store/onboarding';
+import { useUserStore } from '@/store/user';
+import { supabase } from '@/lib/supabase';
 import { Card } from '@/components/ui/Card';
 import { colors, fonts, radius } from '@/constants/theme';
 
@@ -39,9 +43,30 @@ const STATS = [
 ];
 
 export default function ProfileScreen() {
+  const router = useRouter();
   const { name, goal, mealPlan, calories, protein, carbs, fat, bmi } = useOnboardingStore();
+  const { clearProfile } = useUserStore();
 
   const displayName = name || 'Warrior';
+
+  const handleSignOut = () => {
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to sign out?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: async () => {
+            await supabase.auth.signOut();
+            clearProfile();
+            router.replace('/');
+          },
+        },
+      ]
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -133,7 +158,7 @@ export default function ProfileScreen() {
           </View>
         ))}
 
-        <TouchableOpacity style={styles.logoutBtn} activeOpacity={0.7}>
+        <TouchableOpacity style={styles.logoutBtn} onPress={handleSignOut} activeOpacity={0.7}>
           <LogOut size={18} color={colors.red} />
           <Text style={styles.logoutText}>SIGN OUT</Text>
         </TouchableOpacity>

@@ -23,32 +23,20 @@ import Animated, {
 import Svg, { Circle, Polyline } from 'react-native-svg';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { colors, fonts } from '@/constants/theme';
+import { useOnboardingStore } from '@/store/onboarding';
+import { useUserStore } from '@/store/user';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-// ─── Mock Data ────────────────────────────────────────────────────────────────
+// ─── Static Mock Data (gamification — real system in Phase 2) ─────────────────
 
-const mockUser = {
-  name: 'Brett',
+const mockRank = {
   rank: 'Raider',
-  rankLevel: 2,
-  streakDays: 47,
-  xpToday: 847,
+  streakDays: 0,
+  xpToday: 0,
   xpToNextRank: 840,
-  xpCurrentTotal: 4160,
+  xpCurrentTotal: 0,
   xpNextRankTotal: 5000,
-};
-
-const mockCalories = {
-  target: 2340,
-  consumed: 1614,
-  remaining: 726,
-};
-
-const mockMacros = {
-  protein: { consumed: 98, target: 185 },
-  carbs: { consumed: 180, target: 240 },
-  fat: { consumed: 52, target: 78 },
 };
 
 const mockWater = {
@@ -251,6 +239,22 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [ringKey, setRingKey] = useState(0);
 
+  // Real user data
+  const onboarding = useOnboardingStore();
+  const userProfile = useUserStore((s) => s.profile);
+  const userName = userProfile?.name || onboarding.name || 'Warrior';
+
+  // Calorie & macro targets from onboarding; consumed starts at 0 until food log is built
+  const calTarget  = onboarding.calories > 0 ? onboarding.calories : 2000;
+  const calConsumed = 0;
+  const calRemaining = calTarget - calConsumed;
+
+  const macros = {
+    protein: { consumed: 0, target: onboarding.protein > 0 ? onboarding.protein : 150 },
+    carbs:   { consumed: 0, target: onboarding.carbs   > 0 ? onboarding.carbs   : 200 },
+    fat:     { consumed: 0, target: onboarding.fat     > 0 ? onboarding.fat     : 65  },
+  };
+
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     setTimeout(() => {
@@ -304,14 +308,14 @@ export default function HomeScreen() {
               <View style={styles.heroTop}>
                 <View>
                   <Text style={styles.greeting}>{getGreeting()}</Text>
-                  <Text style={styles.heroName}>{mockUser.name.toUpperCase()}</Text>
+                  <Text style={styles.heroName}>{userName.toUpperCase()}</Text>
                 </View>
                 <TouchableOpacity
                   onPress={() => Alert.alert('Rank system coming in Progress tab')}
                   activeOpacity={0.7}
                 >
                   <View style={styles.rankBadge}>
-                    <Text style={styles.rankBadgeText}>⚔  {mockUser.rank.toUpperCase()}</Text>
+                    <Text style={styles.rankBadgeText}>⚔  {mockRank.rank.toUpperCase()}</Text>
                   </View>
                 </TouchableOpacity>
               </View>
@@ -319,11 +323,11 @@ export default function HomeScreen() {
               <View style={styles.rankProgressRow}>
                 <Text style={styles.rankProgressLabel}>RAIDER → BERSERKER</Text>
                 <Text style={styles.rankProgressLabel}>
-                  {mockUser.xpToNextRank.toLocaleString()} XP TO NEXT RANK
+                  {mockRank.xpToNextRank.toLocaleString()} XP TO NEXT RANK
                 </Text>
               </View>
               <ProgressBar
-                value={mockUser.xpCurrentTotal / mockUser.xpNextRankTotal}
+                value={mockRank.xpCurrentTotal / mockRank.xpNextRankTotal}
                 color={colors.gold}
                 height={4}
                 backgroundColor={colors.border}
@@ -333,12 +337,12 @@ export default function HomeScreen() {
               <View style={styles.heroStats}>
                 <View style={styles.heroStat}>
                   <Text style={styles.heroStatEmoji}>🔥</Text>
-                  <Text style={styles.heroStatText}>{mockUser.streakDays} days</Text>
+                  <Text style={styles.heroStatText}>{mockRank.streakDays} day streak</Text>
                 </View>
                 <View style={styles.heroStat}>
                   <Sword size={14} color={colors.gold} />
                   <Text style={styles.heroStatText}>
-                    {mockUser.xpToday.toLocaleString()} XP today
+                    {mockRank.xpToday.toLocaleString()} XP today
                   </Text>
                 </View>
               </View>
@@ -352,17 +356,17 @@ export default function HomeScreen() {
               <View style={styles.ringsRow}>
                 <RingChart
                   animKey={ringKey}
-                  value={mockCalories.consumed / mockCalories.target}
+                  value={calTarget > 0 ? calConsumed / calTarget : 0}
                   strokeColor={colors.blue}
-                  centerTop={mockCalories.remaining.toString()}
+                  centerTop={calRemaining.toString()}
                   centerBottom="left"
                   label="CALORIES"
                 />
                 <RingChart
                   animKey={ringKey}
-                  value={mockMacros.protein.consumed / mockMacros.protein.target}
+                  value={macros.protein.target > 0 ? macros.protein.consumed / macros.protein.target : 0}
                   strokeColor={colors.gold}
-                  centerTop={`${mockMacros.protein.target - mockMacros.protein.consumed}g`}
+                  centerTop={`${macros.protein.target - macros.protein.consumed}g`}
                   centerBottom="left"
                   label="PROTEIN"
                 />
@@ -382,10 +386,10 @@ export default function HomeScreen() {
           <FadeSlide delay={240}>
             <View style={styles.macroStrip}>
               {[
-                { label: 'CALS', value: mockCalories.remaining.toString(), unit: '', sub: 'remaining', dot: colors.blue },
-                { label: 'PROTEIN', value: String(mockMacros.protein.target - mockMacros.protein.consumed), unit: 'g', sub: 'left', dot: colors.gold },
-                { label: 'CARBS', value: String(mockMacros.carbs.target - mockMacros.carbs.consumed), unit: 'g', sub: 'left', dot: 'rgba(75,163,255,0.6)' },
-                { label: 'FAT', value: String(mockMacros.fat.target - mockMacros.fat.consumed), unit: 'g', sub: 'left', dot: colors.muted },
+                { label: 'CALS',    value: calRemaining.toString(),                                    unit: '',  sub: 'remaining', dot: colors.blue },
+                { label: 'PROTEIN', value: String(macros.protein.target - macros.protein.consumed),   unit: 'g', sub: 'left',      dot: colors.gold },
+                { label: 'CARBS',   value: String(macros.carbs.target   - macros.carbs.consumed),     unit: 'g', sub: 'left',      dot: 'rgba(75,163,255,0.6)' },
+                { label: 'FAT',     value: String(macros.fat.target     - macros.fat.consumed),       unit: 'g', sub: 'left',      dot: colors.muted },
               ].map((m) => (
                 <View key={m.label} style={styles.macroCard}>
                   <View style={[styles.macroDot, { backgroundColor: m.dot }]} />

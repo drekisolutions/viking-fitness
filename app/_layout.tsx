@@ -60,6 +60,7 @@ export default function RootLayout() {
         <Stack.Screen name="index" />
         <Stack.Screen name="onboarding" />
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="success" />
         <Stack.Screen name="+not-found" />
       </Stack>
       <StatusBar style="light" />

@@ -20,6 +20,7 @@ import { useUserStore } from '@/store/user';
 import { Card } from '@/components/ui/Card';
 import { colors, fonts, radius } from '@/constants/theme';
 import { supabase } from '@/lib/supabase';
+import { startCheckout, STRIPE_PRICES } from '@/lib/stripe';
 
 const FREE_FEATURES = ['Meal tracking', 'Macro tracking', 'Basic workouts', 'Warrior ranks I–II'];
 const PREMIUM_FEATURES = [
@@ -110,7 +111,54 @@ export default function AccountScreen() {
   };
 
   const handleContinueFree = () => handleEmailSignUp('free');
-  const handleContinuePremium = () => handleEmailSignUp('premium');
+
+  const handleContinuePremium = async () => {
+    if (!email.trim() || !password.trim()) {
+      Alert.alert('Missing fields', 'Please enter your email and password.');
+      return;
+    }
+    if (password.length < 6) {
+      Alert.alert('Password too short', 'Password must be at least 6 characters.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.auth.signUp({ email, password });
+      if (error) throw error;
+      if (data.user) {
+        // Save as free first — Stripe webhook upgrades to premium after payment
+        await saveProfileToSupabase(data.user.id, 'free');
+
+        // On mobile: enter the app now, checkout opens in browser
+        if (Platform.OS !== 'web') {
+          enterApp(data.user.id, email, 'free');
+        }
+
+        // Open Stripe checkout
+        const result = await startCheckout(
+          STRIPE_PRICES.monthly.id,
+          data.user.id,
+          email
+        );
+
+        if (!result.success) {
+          // Checkout failed — enter as free with a note to upgrade later
+          Alert.alert(
+            'Checkout Unavailable',
+            result.error || 'Could not open checkout. You can upgrade anytime from your profile.',
+          );
+          if (Platform.OS === 'web') {
+            enterApp(data.user.id, email, 'free');
+          }
+        }
+        // On web: startCheckout redirects page to Stripe — no enterApp needed
+      }
+    } catch (e: any) {
+      Alert.alert('Sign up failed', e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSkip = () => {
     // Guest mode — local only, no Supabase
