@@ -1,0 +1,32 @@
+{
+  "expo": {
+    "name": "Viking Fitness",
+    "slug": "viking-fitness",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "vikingfitness",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.drekilabs.vikingfitness"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0B0B0D"
+      },
+      "package": "com.drekilabs.vikingfitness"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
