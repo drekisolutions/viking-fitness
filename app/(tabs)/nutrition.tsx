@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { Plus, Search, ChevronDown, ChevronUp, Info, AlertTriangle } from 'lucide-react-native';
+import { Plus, Search, ChevronDown, ChevronUp, Info, TriangleAlert } from 'lucide-react-native';
 import { useOnboardingStore } from '@/store/onboarding';
 import { Card } from '@/components/ui/Card';
 import { ProgressBar } from '@/components/ui/ProgressBar';
@@ -107,7 +107,7 @@ function Glp1Alert({ plan }: { plan: MealPlanInfo }) {
   return (
     <View style={styles.glp1Card}>
       <View style={styles.glp1Header}>
-        <AlertTriangle size={16} color="#AB47BC" />
+        <TriangleAlert size={16} color="#AB47BC" />
         <Text style={styles.glp1Title}>GLP-1 COMPANION PLAN</Text>
       </View>
       <Text style={styles.glp1Subtitle}>

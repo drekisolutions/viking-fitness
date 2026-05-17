@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, TouchableOpacity, StyleSheet, Text } from 'react-native';
 import { Tabs, useRouter } from 'expo-router';
-import { House, Dumbbell, Utensils, BarChart2, User, Plus } from 'lucide-react-native';
+import { House, Dumbbell, Utensils, ChartNoAxesColumn, User, Plus } from 'lucide-react-native';
 import { colors, fonts } from '@/constants/theme';
 
 function CustomTabBarButton({ onPress }: { onPress: () => void }) {
@@ -55,7 +55,7 @@ export default function TabLayout() {
         name="progress"
         options={{
           title: 'Progress',
-          tabBarIcon: ({ color }) => <BarChart2 size={22} color={color} />,
+          tabBarIcon: ({ color }) => <ChartNoAxesColumn size={22} color={color} />,
         }}
       />
       <Tabs.Screen
