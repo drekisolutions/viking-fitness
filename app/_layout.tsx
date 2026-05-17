@@ -1,8 +1,9 @@
 import { useEffect } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Platform } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
+import { inject } from '@vercel/analytics';
 import { useFonts } from 'expo-font';
 import {
   BebasNeue_400Regular,
@@ -20,6 +21,11 @@ import * as SplashScreen from 'expo-splash-screen';
 import { colors, fonts } from '@/constants/theme';
 
 SplashScreen.preventAutoHideAsync();
+
+// Inject Vercel Analytics on web only
+if (Platform.OS === 'web') {
+  inject();
+}
 
 export default function RootLayout() {
   useFrameworkReady();

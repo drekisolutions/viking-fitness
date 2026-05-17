@@ -17,6 +17,7 @@
     "@expo/vector-icons": "^15.0.3",
     "@stripe/stripe-js": "^9.5.0",
     "@supabase/supabase-js": "^2.105.4",
+    "@vercel/analytics": "^2.0.1",
     "expo": "~54.0.34",
     "expo-blur": "~15.0.8",
     "expo-constants": "~18.0.13",
