@@ -3,6 +3,7 @@ import {
   calculateBMI,
   calculateTDEE,
   getCalorieTarget,
+  adjustCaloriesForPlan,
   getMacros,
 } from '@/constants/calculations';
 
@@ -56,7 +57,8 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
       state.sex,
       state.activityLevel
     );
-    const calories = getCalorieTarget(tdee, state.goal);
+    const rawCalories = getCalorieTarget(tdee, state.goal);
+    const calories = adjustCaloriesForPlan(rawCalories, state.mealPlan);
     const macros = getMacros(calories, state.mealPlan);
 
     set({

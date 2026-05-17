@@ -44,6 +44,19 @@ export function getCalorieTarget(tdee: number, goal: string): number {
   }
 }
 
+/**
+ * GLP-1 calorie adjustment.
+ * Users on semaglutide/tirzepatide (Ozempic, Wegovy, Mounjaro, Zepbound)
+ * typically eat 1,000–1,200 kcal/day due to appetite suppression.
+ * We cap at 1,200 and floor at 900 to prevent unsafe restriction.
+ */
+export function adjustCaloriesForPlan(calories: number, planType: string): number {
+  if (planType === 'glp1') {
+    return Math.max(900, Math.min(1200, Math.round(calories * 0.60)));
+  }
+  return calories;
+}
+
 export function getMacros(
   calories: number,
   planType: string
@@ -78,6 +91,13 @@ export function getMacros(
         protein: Math.round((calories * 0.20) / 4),
         carbs: Math.round((calories * 0.55) / 4),
         fat: Math.round((calories * 0.25) / 9),
+      };
+    // GLP-1: high protein to preserve muscle during aggressive weight loss
+    case 'glp1':
+      return {
+        protein: Math.round((calories * 0.42) / 4),
+        carbs: Math.round((calories * 0.28) / 4),
+        fat: Math.round((calories * 0.30) / 9),
       };
     case 'balanced':
     default:

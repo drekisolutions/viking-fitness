@@ -23,12 +23,13 @@ const GOALS = [
 ];
 
 const MEAL_PLANS = [
-  { key: 'balanced', name: 'Balanced', split: '30-40-30' },
-  { key: 'high-protein', name: 'High Protein', split: '40-30-25' },
-  { key: 'keto', name: 'Keto', split: '25-5-70' },
-  { key: 'mediterranean', name: 'Mediterranean', split: '25-45-30' },
-  { key: 'carnivore', name: 'Carnivore', split: '40-0-60' },
-  { key: 'vegan', name: 'Vegan', split: '25-50-25' },
+  { key: 'balanced',      name: 'Balanced',      split: '30-40-30', badge: null },
+  { key: 'high-protein',  name: 'High Protein',  split: '40-35-25', badge: null },
+  { key: 'keto',          name: 'Keto',          split: '30-5-65',  badge: null },
+  { key: 'mediterranean', name: 'Mediterranean', split: '20-45-35', badge: null },
+  { key: 'carnivore',     name: 'Carnivore',     split: '45-0-55',  badge: null },
+  { key: 'vegan',         name: 'Vegan',         split: '20-55-25', badge: null },
+  { key: 'glp1',          name: 'GLP-1',         split: '42-28-30', badge: '💊' },
 ];
 
 export default function GoalScreen() {
@@ -112,17 +113,33 @@ export default function GoalScreen() {
           >
             {MEAL_PLANS.map((p) => {
               const isActive = localPlan === p.key;
+              const isGlp1 = p.key === 'glp1';
               return (
                 <TouchableOpacity
                   key={p.key}
-                  style={[styles.planChip, isActive && styles.planChipActive]}
+                  style={[
+                    styles.planChip,
+                    isActive && styles.planChipActive,
+                    isGlp1 && styles.planChipGlp1,
+                    isActive && isGlp1 && styles.planChipGlp1Active,
+                  ]}
                   onPress={() => setLocalPlan(p.key)}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.planSplit}>{p.split}</Text>
-                  <Text style={[styles.planName, isActive && styles.planNameActive]}>
+                  {p.badge ? (
+                    <Text style={styles.planBadge}>{p.badge}</Text>
+                  ) : (
+                    <Text style={styles.planSplit}>{p.split}</Text>
+                  )}
+                  <Text style={[
+                    styles.planName,
+                    isActive && styles.planNameActive,
+                    isActive && isGlp1 && styles.planNameGlp1Active,
+                  ]}>
                     {p.name}
                   </Text>
+                  {isGlp1 && <Text style={styles.planSubLabel}>P-C-F</Text>}
+                  {!isGlp1 && <Text style={styles.planSplitLabel}>P-C-F</Text>}
                 </TouchableOpacity>
               );
             })}
@@ -266,9 +283,33 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 5,
   },
+  planChipGlp1: {
+    borderColor: '#AB47BC',
+    borderWidth: 1,
+  },
+  planChipGlp1Active: {
+    borderColor: '#AB47BC',
+    shadowColor: '#AB47BC',
+    shadowOpacity: 0.3,
+  },
+  planBadge: {
+    fontSize: 20,
+    marginBottom: 2,
+  },
   planSplit: {
     fontFamily: fonts.body,
     fontSize: 11,
+    color: colors.muted,
+  },
+  planSplitLabel: {
+    fontFamily: fonts.body,
+    fontSize: 9,
+    color: colors.muted,
+    opacity: 0,  // invisible spacer to match GLP-1 height
+  },
+  planSubLabel: {
+    fontFamily: fonts.body,
+    fontSize: 9,
     color: colors.muted,
   },
   planName: {
@@ -278,5 +319,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   planNameActive: { color: colors.gold },
+  planNameGlp1Active: { color: '#AB47BC' },
   footer: { paddingHorizontal: 24, paddingBottom: 16, paddingTop: 8 },
 });
