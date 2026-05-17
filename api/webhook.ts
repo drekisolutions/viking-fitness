@@ -18,13 +18,17 @@ async function getRawBody(req: any): Promise<Buffer> {
   });
 }
 
+const setPlan = async (userId: string, plan: 'premium' | 'free') => {
+  await supabase.from('profiles').update({ plan }).eq('id', userId);
+};
+
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') return res.status(405).end();
 
   const rawBody = await getRawBody(req);
   const sig = req.headers['stripe-signature'];
 
-  let event: Stripe.Event;
+  let event: any;
   try {
     event = stripe.webhooks.constructEvent(rawBody, sig, process.env.STRIPE_WEBHOOK_SECRET!);
   } catch (err: any) {
@@ -32,36 +36,29 @@ export default async function handler(req: any, res: any) {
     return res.status(400).json({ error: `Webhook Error: ${err.message}` });
   }
 
-  const setPlan = async (userId: string, plan: 'premium' | 'free') => {
-    await supabase.from('profiles').update({ plan }).eq('id', userId);
-  };
+  const obj = event.data.object as any;
 
   switch (event.type) {
     case 'checkout.session.completed': {
-      const session = event.data.object as Stripe.Checkout.Session;
-      const userId = session.metadata?.userId;
+      const userId = obj.metadata?.userId;
       if (userId) await setPlan(userId, 'premium');
       break;
     }
     case 'customer.subscription.deleted':
     case 'customer.subscription.paused': {
-      const sub = event.data.object as Stripe.Subscription;
-      const userId = sub.metadata?.userId;
+      const userId = obj.metadata?.userId;
       if (userId) await setPlan(userId, 'free');
       break;
     }
     case 'customer.subscription.resumed':
     case 'invoice.payment_succeeded': {
-      const obj = event.data.object as any;
       const userId = obj.metadata?.userId || obj.subscription_details?.metadata?.userId;
       if (userId) await setPlan(userId, 'premium');
       break;
     }
-    case 'invoice.payment_failed': {
-      // optionally notify user — don't downgrade immediately
-      console.log('Payment failed for subscription:', event.data.object);
+    case 'invoice.payment_failed':
+      console.log('Payment failed:', obj.id);
       break;
-    }
   }
 
   res.status(200).json({ received: true });
