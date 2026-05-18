@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { Redirect } from 'expo-router';
 import { useUserStore } from '@/store/user';
+import { useOnboardingStore } from '@/store/onboarding';
 import { supabase } from '@/lib/supabase';
 import { colors } from '@/constants/theme';
 
 export default function Index() {
   const { profile, setProfile } = useUserStore();
+  const { initFromProfile } = useOnboardingStore();
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
@@ -24,12 +26,12 @@ export default function Index() {
             .single();
 
           if (dbProfile && mounted) {
-            setProfile({
+            const profileData = {
               id: session.user.id,
               name: dbProfile.name || 'Warrior',
               email: session.user.email || '',
               age: dbProfile.age || 25,
-              sex: dbProfile.sex || 'male',
+              sex: (dbProfile.sex as 'male' | 'female') || 'male',
               heightFt: dbProfile.height_ft || 5,
               heightIn: dbProfile.height_in || 10,
               weightLbs: dbProfile.weight_lbs || 180,
@@ -39,8 +41,12 @@ export default function Index() {
               protein: dbProfile.protein || 0,
               carbs: dbProfile.carbs || 0,
               fat: dbProfile.fat || 0,
-              onboardingComplete: dbProfile.onboarding_complete || false,
-            });
+              onboardingComplete: dbProfile.onboarding_complete ?? false,
+            };
+            setProfile(profileData);
+            // Seed the onboarding store so macro/goal data is available
+            // across tabs without requiring re-onboarding on every restart
+            initFromProfile(profileData);
           }
         }
       } catch (_) {

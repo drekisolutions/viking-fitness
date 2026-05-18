@@ -23,8 +23,15 @@ interface OnboardingState {
   protein: number;
   carbs: number;
   fat: number;
-  setField: (key: keyof Omit<OnboardingState, 'setField' | 'calculateResults'>, value: unknown) => void;
+  setField: (key: keyof Omit<OnboardingState, 'setField' | 'calculateResults' | 'initFromProfile'>, value: unknown) => void;
   calculateResults: () => void;
+  /** Re-seed the store from a saved Supabase profile (called on every app start) */
+  initFromProfile: (p: {
+    name?: string; age?: number; sex?: 'male' | 'female';
+    heightFt?: number; heightIn?: number; weightLbs?: number;
+    goal?: string; mealPlan?: string;
+    calories?: number; protein?: number; carbs?: number; fat?: number;
+  }) => void;
 }
 
 export const useOnboardingStore = create<OnboardingState>((set, get) => ({
@@ -45,6 +52,22 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
   fat: 0,
 
   setField: (key, value) => set({ [key]: value } as Partial<OnboardingState>),
+
+  initFromProfile: (p) =>
+    set((state) => ({
+      name:      p.name      ?? state.name,
+      age:       p.age       ?? state.age,
+      sex:       p.sex       ?? state.sex,
+      heightFt:  p.heightFt  ?? state.heightFt,
+      heightIn:  p.heightIn  ?? state.heightIn,
+      weightLbs: p.weightLbs ?? state.weightLbs,
+      goal:      p.goal      ?? state.goal,
+      mealPlan:  p.mealPlan  ?? state.mealPlan,
+      calories:  p.calories  ?? state.calories,
+      protein:   p.protein   ?? state.protein,
+      carbs:     p.carbs     ?? state.carbs,
+      fat:       p.fat       ?? state.fat,
+    })),
 
   calculateResults: () => {
     const state = get();

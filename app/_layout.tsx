@@ -22,13 +22,14 @@ import { colors, fonts } from '@/constants/theme';
 
 SplashScreen.preventAutoHideAsync();
 
-// Inject Vercel Analytics on web only
-if (Platform.OS === 'web') {
-  inject();
-}
-
 export default function RootLayout() {
   useFrameworkReady();
+
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      inject();
+    }
+  }, []);
 
   const [fontsLoaded, fontError] = useFonts({
     BebasNeue_400Regular,
