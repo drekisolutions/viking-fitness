@@ -19,7 +19,7 @@
         "buildType": "app-bundle"
       },
       "ios": {
-        "resourceClass": "m-series-medium"
+        "resourceClass": "m-medium"
       }
     }
   },
