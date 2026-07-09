@@ -22,19 +22,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0B0B0D"
       },
-      "package": "com.drekilabs.vikingfitness",
-      "intentFilters": [
-        {
-          "action": "VIEW",
-          "autoVerify": true,
-          "data": [
-            {
-              "scheme": "vikingfitness"
-            }
-          ],
-          "category": ["BROWSABLE", "DEFAULT"]
-        }
-      ]
+      "package": "com.drekilabs.vikingfitness"
     },
     "web": {
       "bundler": "metro",
@@ -56,6 +44,12 @@
     "experiments": {
       "typedRoutes": true
     },
-    "extra": {}
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "66b7059a-065b-43d8-aa13-6ffac05ed0e3"
+      }
+    },
+    "owner": "dreki_solutions"
   }
 }

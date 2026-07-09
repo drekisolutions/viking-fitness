@@ -1,6 +1,19 @@
 # Viking Fitness — Build Status
 
-Last updated: 2026-05-16
+Last updated: 2026-07-09 (branch claude/great-gauss-04189e — Council corrections + Play launch prep)
+
+## ✅ Council review corrections (2026-07-09)
+- Play compliance: RevenueCat/Play Billing is now the native payment path (`lib/purchases.ts`);
+  Stripe checkout is web-only. Requires EAS build to test (not Expo Go).
+- Security: `create-checkout-session` edge function now verifies the JWT, derives user
+  server-side, allowlists plans (price IDs are Supabase secrets), fixed redirect URLs.
+- Removed duplicate `api/` Vercel routes + `stripe` dep; Supabase edge functions are the backend.
+- app.json: removed invalid autoVerify bare-scheme intentFilter; EAS projectId written
+  (66b7059a-065b-43d8-aa13-6ffac05ed0e3, owner dreki_solutions).
+- Added `/privacy` page, in-app account deletion (+ `delete-account` edge function),
+  `revenuecat-webhook` edge function; re-added missing `react-native-worklets` dep.
+- **Next:** owner actions in `docs/PLAY-LAUNCH-CHECKLIST.md` (Play Console app, RevenueCat
+  project, deploy edge functions/secrets, then EAS production build — paid, needs confirmation).
 
 ---
 

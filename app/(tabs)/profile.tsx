@@ -11,7 +11,7 @@ import {
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { Settings, ChevronRight, Target, Utensils, Bell, Shield, LogOut, CreditCard as Edit3 } from 'lucide-react-native';
+import { Settings, ChevronRight, Target, Utensils, Bell, Shield, LogOut, Trash2, CreditCard as Edit3 } from 'lucide-react-native';
 import { useOnboardingStore } from '@/store/onboarding';
 import { useUserStore } from '@/store/user';
 import { supabase } from '@/lib/supabase';
@@ -62,6 +62,34 @@ export default function ProfileScreen() {
             await supabase.auth.signOut();
             clearProfile();
             router.replace('/');
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete Account',
+      'This permanently deletes your account and all your fitness data. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete Forever',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const { data: { session } } = await supabase.auth.getSession();
+              if (session) {
+                const { error } = await supabase.functions.invoke('delete-account');
+                if (error) throw error;
+                await supabase.auth.signOut();
+              }
+              clearProfile();
+              router.replace('/');
+            } catch (e: any) {
+              Alert.alert('Deletion failed', e.message ?? 'Please try again or contact dreki.solutions@gmail.com.');
+            }
           },
         },
       ]
@@ -161,6 +189,11 @@ export default function ProfileScreen() {
         <TouchableOpacity style={styles.logoutBtn} onPress={handleSignOut} activeOpacity={0.7}>
           <LogOut size={18} color={colors.red} />
           <Text style={styles.logoutText}>SIGN OUT</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.deleteBtn} onPress={handleDeleteAccount} activeOpacity={0.7}>
+          <Trash2 size={14} color={colors.muted} />
+          <Text style={styles.deleteText}>Delete account & data</Text>
         </TouchableOpacity>
 
         <View style={styles.versionRow}>
@@ -353,6 +386,20 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.red,
     letterSpacing: 2,
+  },
+  deleteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 4,
+    marginBottom: 24,
+  },
+  deleteText: {
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: colors.muted,
+    textDecorationLine: 'underline',
   },
   versionRow: { alignItems: 'center', gap: 4, marginBottom: 8 },
   versionText: {

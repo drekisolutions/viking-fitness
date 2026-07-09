@@ -20,7 +20,12 @@ import { useUserStore } from '@/store/user';
 import { Card } from '@/components/ui/Card';
 import { colors, fonts, radius } from '@/constants/theme';
 import { supabase } from '@/lib/supabase';
-import { startCheckout, STRIPE_PRICES } from '@/lib/stripe';
+import { startCheckout } from '@/lib/stripe';
+import {
+  configurePurchases,
+  isNativeBillingAvailable,
+  purchasePremium,
+} from '@/lib/purchases';
 
 const FREE_FEATURES = ['Meal tracking', 'Macro tracking', 'Basic workouts', 'Warrior ranks I–II'];
 const PREMIUM_FEATURES = [
@@ -126,32 +131,47 @@ export default function AccountScreen() {
       const { data, error } = await supabase.auth.signUp({ email, password });
       if (error) throw error;
       if (data.user) {
-        // Save as free first — Stripe webhook upgrades to premium after payment
+        // Save as free first — the payment webhook upgrades to premium
         await saveProfileToSupabase(data.user.id, 'free');
 
-        // On mobile: enter the app now, checkout opens in browser
-        if (Platform.OS !== 'web') {
-          enterApp(data.user.id, email, 'free');
-        }
-
-        // Open Stripe checkout
-        const result = await startCheckout(
-          STRIPE_PRICES.monthly.id,
-          data.user.id,
-          email
-        );
-
-        if (!result.success) {
-          // Checkout failed — enter as free with a note to upgrade later
-          Alert.alert(
-            'Checkout Unavailable',
-            result.error || 'Could not open checkout. You can upgrade anytime from your profile.',
-          );
-          if (Platform.OS === 'web') {
+        if (Platform.OS === 'web') {
+          // Web: Stripe Checkout (page redirects to Stripe — no enterApp needed)
+          const result = await startCheckout('monthly');
+          if (!result.success) {
+            Alert.alert(
+              'Checkout Unavailable',
+              result.error || 'Could not open checkout. You can upgrade anytime from your profile.',
+            );
             enterApp(data.user.id, email, 'free');
           }
+        } else if (isNativeBillingAvailable()) {
+          // Native store build: Google Play Billing / Apple IAP via RevenueCat.
+          // Play policy forbids external checkout for digital subscriptions.
+          await configurePurchases(data.user.id);
+          const result = await purchasePremium('monthly');
+          if (result.success) {
+            await supabase
+              .from('profiles')
+              .update({ plan: 'premium' })
+              .eq('id', data.user.id);
+            enterApp(data.user.id, email, 'premium');
+          } else {
+            if (!result.userCancelled) {
+              Alert.alert(
+                'Purchase Unavailable',
+                result.error || 'Could not complete the purchase. You can upgrade anytime from your profile.',
+              );
+            }
+            enterApp(data.user.id, email, 'free');
+          }
+        } else {
+          // Expo Go / dev without billing: no compliant payment path available
+          Alert.alert(
+            'Upgrade Unavailable',
+            'Upgrading requires the App Store / Play Store version of Viking Fitness. Your account starts on the free plan.',
+          );
+          enterApp(data.user.id, email, 'free');
         }
-        // On web: startCheckout redirects page to Stripe — no enterApp needed
       }
     } catch (e: any) {
       Alert.alert('Sign up failed', e.message);
