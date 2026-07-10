@@ -33,7 +33,7 @@ const SETTINGS_GROUPS = [
   {
     title: 'ACCOUNT',
     items: [
-      { icon: Shield, label: 'Privacy & Security', sub: 'Password, data, privacy' },
+      { icon: Shield, label: 'Privacy & Security', sub: 'Privacy policy & your data', route: '/privacy' },
       { icon: Settings, label: 'App Settings', sub: 'Units, theme, language' },
     ],
   },
@@ -65,6 +65,8 @@ export default function ProfileScreen() {
       } else if (outcome.status === 'unavailable' || outcome.status === 'error') {
         Alert.alert('Restore', outcome.message);
       }
+    } catch {
+      Alert.alert('Something went wrong', 'Please try again in a moment.');
     } finally {
       setRestoring(false);
     }
@@ -210,7 +212,14 @@ export default function ProfileScreen() {
             <Card style={styles.settingsCard}>
               {group.items.map((item, idx) => (
                 <React.Fragment key={item.label}>
-                  <TouchableOpacity style={styles.settingsRow} activeOpacity={0.7}>
+                  <TouchableOpacity
+                    style={styles.settingsRow}
+                    activeOpacity={0.7}
+                    onPress={() => {
+                      const route = (item as { route?: string }).route;
+                      if (route) router.push(route as never);
+                    }}
+                  >
                     <View style={styles.settingsIcon}>
                       <item.icon size={18} color={colors.blue} />
                     </View>

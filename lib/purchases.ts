@@ -45,13 +45,41 @@ let configured = false;
 export async function configurePurchases(appUserID: string): Promise<boolean> {
   const Purchases = getPurchases();
   if (!Purchases) return false;
-  if (!configured) {
-    Purchases.configure({ apiKey: REVENUECAT_API_KEY!, appUserID });
-    configured = true;
-  } else {
-    await Purchases.logIn(appUserID);
+  try {
+    if (!configured) {
+      Purchases.configure({ apiKey: REVENUECAT_API_KEY!, appUserID });
+      configured = true;
+    } else {
+      await Purchases.logIn(appUserID);
+    }
+    return true;
+  } catch {
+    // Network / SDK errors here must not throw into the UI handlers.
+    return false;
   }
-  return true;
+}
+
+export type NativePrices = { monthly?: string; annual?: string };
+
+/**
+ * Localized store price strings (e.g. "$9.99", "£8.99") for the current
+ * offering, so native paywalls show the real Play/Apple charge rather than a
+ * hardcoded USD figure. Returns {} when billing is unavailable or on error.
+ */
+export async function getNativePrices(): Promise<NativePrices> {
+  const Purchases = getPurchases();
+  if (!Purchases) return {};
+  try {
+    const offerings = await Purchases.getOfferings();
+    const offering = offerings.current;
+    if (!offering) return {};
+    return {
+      monthly: offering.monthly?.product?.priceString,
+      annual: offering.annual?.product?.priceString,
+    };
+  } catch {
+    return {};
+  }
 }
 
 export type PurchaseResult = {

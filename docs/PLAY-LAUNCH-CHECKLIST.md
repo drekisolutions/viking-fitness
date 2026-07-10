@@ -9,7 +9,7 @@ Package: `com.drekilabs.vikingfitness` · EAS project: `66b7059a-065b-43d8-aa13-
 
 | # | Severity | Finding | Fix |
 |---|----------|---------|-----|
-| 1 | CRITICAL | Stripe browser checkout on Android violates Google Play's payments policy | Native builds now use **RevenueCat / Google Play Billing** (`lib/purchases.ts`); Stripe is **web-only** (`lib/stripe.ts` refuses on native). `react-native-purchases` + `react-native-purchases-ui` added. New `revenuecat-webhook` edge function keeps `profiles.plan` in sync. |
+| 1 | CRITICAL | Stripe browser checkout on Android violates Google Play's payments policy | Native builds now use **RevenueCat / Google Play Billing** (`lib/purchases.ts`); Stripe is **web-only** (`lib/stripe.ts` refuses on native). `react-native-purchases` added (custom paywall, so `react-native-purchases-ui` is intentionally not used). New `revenuecat-webhook` edge function keeps `profiles.plan` in sync. |
 | 2 | HIGH | `create-checkout-session` trusted client-supplied `priceId`, `userId`, `email`, redirect URLs | Function now verifies the JWT (`auth.getUser`), derives user id + email server-side, maps a `plan` key (`monthly`/`annual`) to price IDs held in **server secrets**, and uses server-side constant redirect URLs. Client sends only `{ plan }`. |
 | 3 | MEDIUM | `api/` Vercel routes duplicated the Supabase edge functions; server `stripe` SDK in app deps | `api/` deleted, `stripe` removed from `package.json`, `vercel.json` rewrite simplified. Supabase edge functions are the single backend. |
 | 4 | LOW | `autoVerify: true` on a bare custom-scheme intent filter | Intent filter block removed — `"scheme": "vikingfitness"` already generates the correct deep-link filter; `autoVerify` is only valid for https App Links. |
@@ -112,9 +112,28 @@ eas submit --platform android --profile production   # needs the service-account
 
 ---
 
-## Part 5 — Remaining known gaps (not launch blockers, tracked)
+## Part 5 — Blockers surfaced by the adversarial review (owner action)
 
-- iOS path: RevenueCat wiring is platform-agnostic, but the App Store app, `EXPO_PUBLIC_REVENUECAT_IOS_API_KEY`, and Apple products are not set up yet.
-- No restore-purchases button in the UI yet (`restorePurchases()` exists in `lib/purchases.ts`) — stores expect one; add to Profile before broad release.
-- Upgrade path after onboarding: users who start free currently have no in-app upgrade screen; premium purchase only happens during onboarding.
+- **App icon / splash assets are broken (HIGH — do before any store submission).** `assets/icon.png`,
+  `adaptive-icon.png`, `splash.png`, and `favicon.png` are all the *same* JPEG file renamed to
+  `.png` (JPEG magic bytes, no alpha channel, all 1024×1024, identical md5). Consequences: the
+  Android adaptive icon is a full-bleed opaque square that the launcher mask crops at the corners
+  (the `#0B0B0D` background never shows), and these files can't be reused for the Play 512×512
+  store icon. **Fix requires the real Viking-head art re-exported as true PNGs:** `adaptive-icon.png`
+  transparent-background with art inside the ~66% safe zone; `icon.png` a 1024×1024 opaque PNG; a
+  real splash graphic; a small favicon. Verify each begins with PNG bytes `89 50 4E 47` before
+  committing. (I can't regenerate the art here — it needs the source image.)
+
+## Part 6 — Remaining known gaps (not launch blockers, tracked)
+
+- iOS path: RevenueCat wiring is platform-agnostic, but the App Store app, `EXPO_PUBLIC_REVENUECAT_IOS_API_KEY`, and Apple products are not set up yet. The iOS paywall also needs Apple's standard EULA link (or your own) — `/terms` covers the custom-EULA requirement.
+- RevenueCat webhook trusts the client-set `app_user_id` as the profiles key (gated by the shared secret). Low risk (griefing only), documented inline in `supabase/functions/revenuecat-webhook/index.ts`. Harden later with a stored RevenueCat↔user mapping + event-id idempotency.
 - Dashboard data (workouts, food log, weight) is still hardcoded; fine for internal testing, should be real before production rollout.
+
+### Resolved by the review pass (2026-07-09)
+- ✅ Restore-purchases button — added to Profile (native) and the paywall.
+- ✅ Post-onboarding upgrade path — `app/upgrade.tsx` paywall reachable from Profile.
+- ✅ Subscription legal compliance — auto-renewal disclosure + Terms of Use (`/terms`) + Privacy Policy links now on both purchase surfaces; privacy policy reachable in-app (Profile → Privacy & Security).
+- ✅ Guest purchase guard — guests can no longer trigger an orphaned store charge.
+- ✅ Email-confirmation signup no longer silently discards the profile.
+- ✅ Native paywall shows the localized Play/Apple price; edge functions return generic errors and use an explicit plan allowlist.

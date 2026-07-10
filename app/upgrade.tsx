@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,7 @@ import { Card } from '@/components/ui/Card';
 import { colors, fonts, radius } from '@/constants/theme';
 import { STRIPE_PRICES, type StripePlan } from '@/lib/stripe';
 import { upgradeToPremium, restorePremium } from '@/lib/upgrade';
+import { getNativePrices, type NativePrices } from '@/lib/purchases';
 
 const PREMIUM_FEATURES = [
   'AI-generated meal plans',
@@ -36,8 +37,22 @@ export default function UpgradeScreen() {
   const [selectedPlan, setSelectedPlan] = useState<StripePlan>('annual');
   const [loading, setLoading] = useState(false);
   const [restoring, setRestoring] = useState(false);
+  const [nativePrices, setNativePrices] = useState<NativePrices>({});
 
   const alreadyPremium = profile?.plan === 'premium';
+
+  // On native, show the real localized store price (Play/Apple) rather than the
+  // hardcoded USD Stripe figure, which would mislead non-USD users.
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    let active = true;
+    getNativePrices().then((p) => {
+      if (active) setNativePrices(p);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const goBack = () => {
     if (router.canGoBack()) router.back();
@@ -71,6 +86,8 @@ export default function UpgradeScreen() {
           );
           break;
       }
+    } catch {
+      Alert.alert('Something went wrong', 'Please try again in a moment.');
     } finally {
       setLoading(false);
     }
@@ -89,6 +106,8 @@ export default function UpgradeScreen() {
       } else if (outcome.status === 'unavailable' || outcome.status === 'error') {
         Alert.alert('Restore', outcome.message);
       }
+    } catch {
+      Alert.alert('Something went wrong', 'Please try again in a moment.');
     } finally {
       setRestoring(false);
     }
@@ -137,6 +156,7 @@ export default function UpgradeScreen() {
                 {PLAN_ORDER.map((plan) => {
                   const p = STRIPE_PRICES[plan];
                   const active = selectedPlan === plan;
+                  const displayPrice = nativePrices[plan] ?? p.label;
                   return (
                     <TouchableOpacity
                       key={plan}
@@ -153,7 +173,7 @@ export default function UpgradeScreen() {
                         {plan === 'annual' ? 'ANNUAL' : 'MONTHLY'}
                       </Text>
                       <Text style={[styles.planPrice, active && styles.planPriceActive]}>
-                        {p.label}
+                        {displayPrice}
                       </Text>
                     </TouchableOpacity>
                   );
@@ -175,6 +195,13 @@ export default function UpgradeScreen() {
 
               <Text style={styles.trialNote}>7-day free trial · Cancel anytime</Text>
 
+              <Text style={styles.disclosure}>
+                Subscription automatically renews unless canceled at least 24 hours before the
+                end of the current period. Manage or cancel anytime in your{' '}
+                {Platform.OS === 'ios' ? 'App Store' : Platform.OS === 'android' ? 'Google Play' : 'store'}{' '}
+                account settings.
+              </Text>
+
               {Platform.OS !== 'web' && (
                 <TouchableOpacity
                   style={styles.restoreBtn}
@@ -188,6 +215,16 @@ export default function UpgradeScreen() {
                   )}
                 </TouchableOpacity>
               )}
+
+              <View style={styles.legalRow}>
+                <TouchableOpacity onPress={() => router.push('/terms')} hitSlop={8}>
+                  <Text style={styles.legalLink}>Terms of Use</Text>
+                </TouchableOpacity>
+                <Text style={styles.legalDot}>·</Text>
+                <TouchableOpacity onPress={() => router.push('/privacy')} hitSlop={8}>
+                  <Text style={styles.legalLink}>Privacy Policy</Text>
+                </TouchableOpacity>
+              </View>
             </>
           )}
         </ScrollView>
@@ -297,6 +334,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 14,
   },
+  disclosure: {
+    fontFamily: fonts.body,
+    fontSize: 11,
+    color: colors.muted,
+    textAlign: 'center',
+    lineHeight: 16,
+    marginTop: 12,
+  },
   restoreBtn: { alignItems: 'center', paddingVertical: 16, marginTop: 4 },
   restoreText: {
     fontFamily: fonts.body,
@@ -304,6 +349,20 @@ const styles = StyleSheet.create({
     color: colors.muted,
     textDecorationLine: 'underline',
   },
+  legalRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 8,
+  },
+  legalLink: {
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: colors.blue,
+    textDecorationLine: 'underline',
+  },
+  legalDot: { fontFamily: fonts.body, fontSize: 12, color: colors.muted },
   activeCard: { padding: 24, marginTop: 24, alignItems: 'center', gap: 8 },
   activeTitle: {
     fontFamily: fonts.display,

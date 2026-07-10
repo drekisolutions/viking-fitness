@@ -25,10 +25,25 @@ export type UpgradeOutcome =
   | { status: 'unavailable'; message: string } // no compliant path in this build
   | { status: 'error'; message: string };
 
+// Guests ('Continue without account') get a throwaway 'guest-<ts>' id that
+// exists nowhere server-side. Charging them via the store would orphan the
+// entitlement to an id the webhook can never reconcile and the plan would be
+// lost on next launch — so a real, signed-in account is required first.
+const NEEDS_ACCOUNT_MESSAGE =
+  'Create a free account to subscribe — your purchase must be tied to your account so it syncs across devices.';
+
+function isRealAccount(userId: string): boolean {
+  return !!userId && !userId.startsWith('guest-');
+}
+
 export async function upgradeToPremium(
   userId: string,
   plan: StripePlan = 'monthly'
 ): Promise<UpgradeOutcome> {
+  if (!isRealAccount(userId)) {
+    return { status: 'unavailable', message: NEEDS_ACCOUNT_MESSAGE };
+  }
+
   if (Platform.OS === 'web') {
     const result = await startCheckout(plan);
     return result.success
@@ -63,6 +78,10 @@ export async function upgradeToPremium(
 
 /** Restore a previous store purchase (required by App Store / Play guidelines). */
 export async function restorePremium(userId: string): Promise<UpgradeOutcome> {
+  if (!isRealAccount(userId)) {
+    return { status: 'unavailable', message: NEEDS_ACCOUNT_MESSAGE };
+  }
+
   if (Platform.OS === 'web') {
     return {
       status: 'unavailable',

@@ -49,7 +49,7 @@ Deno.serve(async (req: Request) => {
   } catch (err: any) {
     console.error('Webhook signature error:', err.message);
     return new Response(
-      JSON.stringify({ error: `Webhook Error: ${err.message}` }),
+      JSON.stringify({ error: 'Webhook signature verification failed' }),
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

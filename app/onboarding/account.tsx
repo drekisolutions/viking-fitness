@@ -41,7 +41,6 @@ export default function AccountScreen() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<'free' | 'premium'>('free');
 
   const saveProfileToSupabase = async (userId: string, plan: 'free' | 'premium') => {
     await supabase.from('profiles').update({
@@ -87,22 +86,44 @@ export default function AccountScreen() {
     router.replace('/(tabs)');
   };
 
-  const handleEmailSignUp = async (plan: 'free' | 'premium') => {
+  const validateCredentials = () => {
     if (!email.trim() || !password.trim()) {
       Alert.alert('Missing fields', 'Please enter your email and password.');
-      return;
+      return false;
     }
     if (password.length < 6) {
       Alert.alert('Password too short', 'Password must be at least 6 characters.');
-      return;
+      return false;
     }
+    return true;
+  };
+
+  // Sign up and return the user id ONLY when an authenticated session exists.
+  // With Supabase email-confirmation enabled (the default), signUp returns a
+  // user but no session — entering the app then would silently discard the
+  // profile (RLS blocks the write) and strand the user, so we stop here.
+  const signUpWithSession = async (): Promise<string | null> => {
+    const { data, error } = await supabase.auth.signUp({ email, password });
+    if (error) throw error;
+    if (!data.user) return null;
+    if (!data.session) {
+      Alert.alert(
+        'Confirm your email',
+        'We sent a confirmation link to your email. Confirm it, then sign in to continue.',
+      );
+      return null;
+    }
+    return data.user.id;
+  };
+
+  const handleEmailSignUp = async (plan: 'free' | 'premium') => {
+    if (!validateCredentials()) return;
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signUp({ email, password });
-      if (error) throw error;
-      if (data.user) {
-        await saveProfileToSupabase(data.user.id, plan);
-        enterApp(data.user.id, email, plan);
+      const userId = await signUpWithSession();
+      if (userId) {
+        await saveProfileToSupabase(userId, plan);
+        enterApp(userId, email, plan);
       }
     } catch (e: any) {
       Alert.alert('Sign up failed', e.message);
@@ -114,33 +135,25 @@ export default function AccountScreen() {
   const handleContinueFree = () => handleEmailSignUp('free');
 
   const handleContinuePremium = async () => {
-    if (!email.trim() || !password.trim()) {
-      Alert.alert('Missing fields', 'Please enter your email and password.');
-      return;
-    }
-    if (password.length < 6) {
-      Alert.alert('Password too short', 'Password must be at least 6 characters.');
-      return;
-    }
+    if (!validateCredentials()) return;
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signUp({ email, password });
-      if (error) throw error;
-      if (data.user) {
+      const userId = await signUpWithSession();
+      if (userId) {
         // Save as free first — the payment webhook upgrades to premium
-        await saveProfileToSupabase(data.user.id, 'free');
+        await saveProfileToSupabase(userId, 'free');
 
         // Single compliant path: web→Stripe, native→Play Billing/IAP, else fallback
-        const outcome = await upgradeToPremium(data.user.id, 'monthly');
+        const outcome = await upgradeToPremium(userId, 'monthly');
         switch (outcome.status) {
           case 'redirecting':
             // Web: the page is navigating to Stripe — nothing more to do.
             break;
           case 'purchased':
-            enterApp(data.user.id, email, 'premium');
+            enterApp(userId, email, 'premium');
             break;
           case 'cancelled':
-            enterApp(data.user.id, email, 'free');
+            enterApp(userId, email, 'free');
             break;
           case 'unavailable':
           case 'error':
@@ -148,7 +161,7 @@ export default function AccountScreen() {
               outcome.status === 'unavailable' ? 'Upgrade Unavailable' : 'Checkout Unavailable',
               `${outcome.message} You can upgrade anytime from your profile.`,
             );
-            enterApp(data.user.id, email, 'free');
+            enterApp(userId, email, 'free');
             break;
         }
       }
@@ -303,6 +316,22 @@ export default function AccountScreen() {
           <Text style={styles.trialNote}>
             7-day free trial included · Cancel anytime
           </Text>
+
+          <Text style={styles.disclosure}>
+            Premium is an auto-renewing subscription that renews unless canceled at least 24
+            hours before the period ends. Manage or cancel anytime in your store account
+            settings.
+          </Text>
+
+          <View style={styles.legalRow}>
+            <TouchableOpacity onPress={() => router.push('/terms')} hitSlop={8}>
+              <Text style={styles.legalLink}>Terms of Use</Text>
+            </TouchableOpacity>
+            <Text style={styles.legalDot}>·</Text>
+            <TouchableOpacity onPress={() => router.push('/privacy')} hitSlop={8}>
+              <Text style={styles.legalLink}>Privacy Policy</Text>
+            </TouchableOpacity>
+          </View>
 
           <TouchableOpacity onPress={handleSkip} style={styles.skipBtn}>
             <Text style={styles.skipText}>Continue without account</Text>
@@ -468,6 +497,28 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 16,
   },
+  disclosure: {
+    fontFamily: fonts.body,
+    fontSize: 11,
+    color: colors.muted,
+    textAlign: 'center',
+    lineHeight: 16,
+    marginTop: 10,
+  },
+  legalRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 8,
+  },
+  legalLink: {
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: colors.blue,
+    textDecorationLine: 'underline',
+  },
+  legalDot: { fontFamily: fonts.body, fontSize: 12, color: colors.muted },
   skipBtn: {
     alignItems: 'center',
     paddingVertical: 16,

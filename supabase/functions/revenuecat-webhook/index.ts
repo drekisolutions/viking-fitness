@@ -55,6 +55,13 @@ Deno.serve(async (req: Request) => {
     const { event } = await req.json();
     const userId: string | undefined = event?.app_user_id;
 
+    // NOTE: app_user_id is set client-side (lib/purchases.ts) and is trusted
+    // here as the profiles key. This is gated by the shared webhook secret, so
+    // it is not anonymously exploitable, but a determined user who knows a
+    // victim's Supabase UUID and spends real money could target that row.
+    // Low risk (griefing only). Harden later: persist the RevenueCat customer
+    // ↔ user mapping at purchase time and reconcile, plus event-id idempotency.
+    //
     // Ignore RevenueCat anonymous ids — purchases are configured with the
     // Supabase user id as app_user_id (see lib/purchases.ts).
     if (userId && !userId.startsWith('$RCAnonymousID:')) {
@@ -68,7 +75,7 @@ Deno.serve(async (req: Request) => {
     });
   } catch (err: any) {
     console.error('RevenueCat webhook error:', err);
-    return new Response(JSON.stringify({ error: err.message }), {
+    return new Response(JSON.stringify({ error: 'Invalid webhook payload' }), {
       status: 400,
       headers: { 'Content-Type': 'application/json' },
     });

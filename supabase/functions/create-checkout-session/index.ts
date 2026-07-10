@@ -55,8 +55,13 @@ Deno.serve(async (req: Request) => {
     if (authError || !user) return json({ error: 'Invalid or expired token' }, 401);
 
     const { plan } = await req.json();
-    const priceId = PRICE_IDS[plan as string];
-    if (!priceId) return json({ error: 'Invalid plan' }, 400);
+    // Explicit allowlist — never index PRICE_IDS with a raw client string
+    // (e.g. '__proto__'/'constructor' would resolve to inherited members).
+    if (plan !== 'monthly' && plan !== 'annual') {
+      return json({ error: 'Invalid plan' }, 400);
+    }
+    const priceId = PRICE_IDS[plan];
+    if (!priceId) return json({ error: 'Plan is not available' }, 500);
 
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
@@ -75,6 +80,6 @@ Deno.serve(async (req: Request) => {
     return json({ url: session.url, sessionId: session.id });
   } catch (err: any) {
     console.error('Stripe checkout error:', err);
-    return json({ error: err.message }, 500);
+    return json({ error: 'Unable to start checkout. Please try again.' }, 500);
   }
 });

@@ -64,6 +64,7 @@ export default function RootLayout() {
         <Stack.Screen name="success" />
         <Stack.Screen name="upgrade" />
         <Stack.Screen name="privacy" />
+        <Stack.Screen name="terms" />
         <Stack.Screen name="+not-found" />
       </Stack>
       <StatusBar style="light" />

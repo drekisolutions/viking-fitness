@@ -51,6 +51,6 @@ Deno.serve(async (req: Request) => {
     return json({ deleted: true });
   } catch (err: any) {
     console.error('delete-account error:', err);
-    return json({ error: err.message }, 500);
+    return json({ error: 'Unable to delete account. Please try again or contact support.' }, 500);
   }
 });
