@@ -15,6 +15,20 @@ Last updated: 2026-07-09 (branch claude/great-gauss-04189e — Council correctio
 - **Next:** owner actions in `docs/PLAY-LAUNCH-CHECKLIST.md` (Play Console app, RevenueCat
   project, deploy edge functions/secrets, then EAS production build — paid, needs confirmation).
 
+## ✅ Post-review hardening (2026-07-09, opus session)
+- Added post-onboarding paywall (`app/upgrade.tsx`), restore-purchases, and a client
+  `plan` field hydrated on start/success/onboarding.
+- Ran an adversarial multi-agent review (5 dimensions, per-finding verification): 13
+  confirmed findings, 11 fixed in code, commit 3389030. Fixes: subscription legal
+  disclosure + Terms(`/terms`)/Privacy links at point of purchase, in-app privacy
+  reachability, guest-purchase guard, email-confirmation session guard, native RC price
+  display, `__proto__` allowlist, generic edge errors, missing catch handlers.
+- **OPEN HIGH (owner):** `assets/*.png` are all one JPEG renamed to .png (no alpha) —
+  Android adaptive icon renders cropped/broken. Needs the real Viking-head art re-exported
+  as true PNGs before store submission. See checklist Part 5.
+- Known gap: app has no dedicated sign-IN screen (only signUp on the account screen); if
+  Supabase email-confirmation is enabled, a returning unconfirmed user has no login path.
+
 ---
 
 ## ✅ Done
