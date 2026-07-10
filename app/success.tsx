@@ -38,6 +38,7 @@ export default function SuccessScreen() {
               protein: dbProfile.protein || 0,
               carbs: dbProfile.carbs || 0,
               fat: dbProfile.fat || 0,
+              plan: (dbProfile.plan as 'free' | 'premium') || 'free',
               onboardingComplete: dbProfile.onboarding_complete ?? false,
             });
           }

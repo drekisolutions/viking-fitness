@@ -1,0 +1,320 @@
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
+  Platform,
+} from 'react-native';
+import { useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
+import { ChevronLeft, Check } from 'lucide-react-native';
+import { useUserStore } from '@/store/user';
+import { Card } from '@/components/ui/Card';
+import { colors, fonts, radius } from '@/constants/theme';
+import { STRIPE_PRICES, type StripePlan } from '@/lib/stripe';
+import { upgradeToPremium, restorePremium } from '@/lib/upgrade';
+
+const PREMIUM_FEATURES = [
+  'AI-generated meal plans',
+  'AI-generated workouts',
+  'Progress photos & timeline',
+  'Full analytics & trends',
+  'All Warrior ranks',
+];
+
+const PLAN_ORDER: StripePlan[] = ['monthly', 'annual'];
+
+export default function UpgradeScreen() {
+  const router = useRouter();
+  const { profile, updateProfile } = useUserStore();
+
+  const [selectedPlan, setSelectedPlan] = useState<StripePlan>('annual');
+  const [loading, setLoading] = useState(false);
+  const [restoring, setRestoring] = useState(false);
+
+  const alreadyPremium = profile?.plan === 'premium';
+
+  const goBack = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace('/(tabs)');
+  };
+
+  const handleUpgrade = async () => {
+    if (!profile) {
+      Alert.alert('Sign in required', 'Please create an account before upgrading.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const outcome = await upgradeToPremium(profile.id, selectedPlan);
+      switch (outcome.status) {
+        case 'redirecting':
+          break; // web: page navigates to Stripe
+        case 'purchased':
+          updateProfile({ plan: 'premium' });
+          Alert.alert('Welcome, Warrior', 'Your premium battle pass is active.', [
+            { text: 'Enter', onPress: goBack },
+          ]);
+          break;
+        case 'cancelled':
+          break; // user backed out — no message
+        case 'unavailable':
+        case 'error':
+          Alert.alert(
+            outcome.status === 'unavailable' ? 'Upgrade Unavailable' : 'Purchase Failed',
+            outcome.message,
+          );
+          break;
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRestore = async () => {
+    if (!profile) return;
+    setRestoring(true);
+    try {
+      const outcome = await restorePremium(profile.id);
+      if (outcome.status === 'purchased') {
+        updateProfile({ plan: 'premium' });
+        Alert.alert('Restored', 'Your premium subscription is active again.', [
+          { text: 'Great', onPress: goBack },
+        ]);
+      } else if (outcome.status === 'unavailable' || outcome.status === 'error') {
+        Alert.alert('Restore', outcome.message);
+      }
+    } finally {
+      setRestoring(false);
+    }
+  };
+
+  return (
+    <View style={styles.container}>
+      <StatusBar style="light" />
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={goBack} style={styles.backBtn} hitSlop={8}>
+            <ChevronLeft size={24} color={colors.blue} />
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <Text style={styles.eyebrow}>⭐ VIKING</Text>
+          <Text style={styles.title}>PREMIUM</Text>
+          <Text style={styles.subtitle}>
+            Unlock the full arsenal and forge your legend without limits.
+          </Text>
+
+          {alreadyPremium ? (
+            <Card glowColor="gold" style={styles.activeCard}>
+              <Text style={styles.activeTitle}>YOU'RE PREMIUM</Text>
+              <Text style={styles.activeSub}>
+                Your battle pass is active. Fight on, warrior.
+              </Text>
+            </Card>
+          ) : (
+            <>
+              <Card style={styles.featureCard}>
+                {PREMIUM_FEATURES.map((f) => (
+                  <View key={f} style={styles.featureRow}>
+                    <Check size={16} color={colors.gold} />
+                    <Text style={styles.featureText}>{f}</Text>
+                  </View>
+                ))}
+              </Card>
+
+              <View style={styles.plansRow}>
+                {PLAN_ORDER.map((plan) => {
+                  const p = STRIPE_PRICES[plan];
+                  const active = selectedPlan === plan;
+                  return (
+                    <TouchableOpacity
+                      key={plan}
+                      style={[styles.planOption, active && styles.planOptionActive]}
+                      onPress={() => setSelectedPlan(plan)}
+                      activeOpacity={0.85}
+                    >
+                      {p.savings && (
+                        <View style={styles.savingsBadge}>
+                          <Text style={styles.savingsText}>{p.savings}</Text>
+                        </View>
+                      )}
+                      <Text style={[styles.planName, active && styles.planNameActive]}>
+                        {plan === 'annual' ? 'ANNUAL' : 'MONTHLY'}
+                      </Text>
+                      <Text style={[styles.planPrice, active && styles.planPriceActive]}>
+                        {p.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              <TouchableOpacity
+                style={styles.upgradeBtn}
+                onPress={handleUpgrade}
+                activeOpacity={0.85}
+                disabled={loading || restoring}
+              >
+                {loading ? (
+                  <ActivityIndicator size="small" color={colors.black} />
+                ) : (
+                  <Text style={styles.upgradeBtnText}>UNLOCK POWER</Text>
+                )}
+              </TouchableOpacity>
+
+              <Text style={styles.trialNote}>7-day free trial · Cancel anytime</Text>
+
+              {Platform.OS !== 'web' && (
+                <TouchableOpacity
+                  style={styles.restoreBtn}
+                  onPress={handleRestore}
+                  disabled={loading || restoring}
+                >
+                  {restoring ? (
+                    <ActivityIndicator size="small" color={colors.muted} />
+                  ) : (
+                    <Text style={styles.restoreText}>Restore purchases</Text>
+                  )}
+                </TouchableOpacity>
+              )}
+            </>
+          )}
+        </ScrollView>
+      </SafeAreaView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.black },
+  safeArea: { flex: 1 },
+  header: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 4 },
+  backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  scroll: { flex: 1 },
+  scrollContent: {
+    paddingHorizontal: 24,
+    paddingBottom: 48,
+    maxWidth: 620,
+    width: '100%',
+    alignSelf: 'center',
+  },
+  eyebrow: {
+    fontFamily: fonts.headingLight,
+    fontSize: 18,
+    color: colors.gold,
+    letterSpacing: 2,
+    marginTop: 4,
+  },
+  title: {
+    fontFamily: fonts.display,
+    fontSize: 52,
+    color: colors.frost,
+    lineHeight: 54,
+    marginTop: 2,
+  },
+  subtitle: {
+    fontFamily: fonts.body,
+    fontSize: 14,
+    color: colors.muted,
+    marginTop: 8,
+    lineHeight: 20,
+  },
+  featureCard: { padding: 20, marginTop: 24, gap: 12 },
+  featureRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  featureText: { fontFamily: fonts.body, fontSize: 14, color: colors.frost, flex: 1 },
+  plansRow: { flexDirection: 'row', gap: 12, marginTop: 20 },
+  planOption: {
+    flex: 1,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingVertical: 18,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+  },
+  planOptionActive: {
+    borderColor: colors.gold,
+    backgroundColor: 'rgba(214,167,86,0.08)',
+  },
+  savingsBadge: {
+    position: 'absolute',
+    top: -10,
+    backgroundColor: colors.gold,
+    paddingHorizontal: 10,
+    paddingVertical: 2,
+    borderRadius: radius.full,
+  },
+  savingsText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 10,
+    color: colors.black,
+    letterSpacing: 0.5,
+  },
+  planName: {
+    fontFamily: fonts.heading,
+    fontSize: 13,
+    color: colors.muted,
+    letterSpacing: 1.5,
+  },
+  planNameActive: { color: colors.gold },
+  planPrice: {
+    fontFamily: fonts.display,
+    fontSize: 26,
+    color: colors.frost,
+    marginTop: 4,
+  },
+  planPriceActive: { color: colors.frost },
+  upgradeBtn: {
+    marginTop: 24,
+    height: 52,
+    borderRadius: radius.sm,
+    backgroundColor: colors.gold,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  upgradeBtnText: {
+    fontFamily: fonts.heading,
+    fontSize: 15,
+    color: colors.black,
+    letterSpacing: 1,
+  },
+  trialNote: {
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: colors.muted,
+    textAlign: 'center',
+    marginTop: 14,
+  },
+  restoreBtn: { alignItems: 'center', paddingVertical: 16, marginTop: 4 },
+  restoreText: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    color: colors.muted,
+    textDecorationLine: 'underline',
+  },
+  activeCard: { padding: 24, marginTop: 24, alignItems: 'center', gap: 8 },
+  activeTitle: {
+    fontFamily: fonts.display,
+    fontSize: 28,
+    color: colors.gold,
+    letterSpacing: 2,
+  },
+  activeSub: {
+    fontFamily: fonts.body,
+    fontSize: 14,
+    color: colors.muted,
+    textAlign: 'center',
+  },
+});

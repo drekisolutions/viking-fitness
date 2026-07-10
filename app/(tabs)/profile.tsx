@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,14 +7,17 @@ import {
   TouchableOpacity,
   Image,
   Alert,
+  ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { Settings, ChevronRight, Target, Utensils, Bell, Shield, LogOut, Trash2, CreditCard as Edit3 } from 'lucide-react-native';
+import { Settings, ChevronRight, Target, Utensils, Bell, Shield, LogOut, Trash2, Crown, RotateCcw, CreditCard as Edit3 } from 'lucide-react-native';
 import { useOnboardingStore } from '@/store/onboarding';
 import { useUserStore } from '@/store/user';
 import { supabase } from '@/lib/supabase';
+import { restorePremium } from '@/lib/upgrade';
 import { Card } from '@/components/ui/Card';
 import { colors, fonts, radius } from '@/constants/theme';
 
@@ -45,9 +48,27 @@ const STATS = [
 export default function ProfileScreen() {
   const router = useRouter();
   const { name, goal, mealPlan, calories, protein, carbs, fat, bmi } = useOnboardingStore();
-  const { clearProfile } = useUserStore();
+  const { profile, updateProfile, clearProfile } = useUserStore();
+  const [restoring, setRestoring] = useState(false);
 
   const displayName = name || 'Warrior';
+  const isPremium = profile?.plan === 'premium';
+
+  const handleRestore = async () => {
+    if (!profile) return;
+    setRestoring(true);
+    try {
+      const outcome = await restorePremium(profile.id);
+      if (outcome.status === 'purchased') {
+        updateProfile({ plan: 'premium' });
+        Alert.alert('Restored', 'Your premium subscription is active again.');
+      } else if (outcome.status === 'unavailable' || outcome.status === 'error') {
+        Alert.alert('Restore', outcome.message);
+      }
+    } finally {
+      setRestoring(false);
+    }
+  };
 
   const handleSignOut = () => {
     Alert.alert(
@@ -144,6 +165,26 @@ export default function ProfileScreen() {
           ))}
         </View>
 
+        {isPremium ? (
+          <View style={styles.premiumBadge}>
+            <Crown size={16} color={colors.gold} />
+            <Text style={styles.premiumBadgeText}>PREMIUM WARRIOR</Text>
+          </View>
+        ) : (
+          <TouchableOpacity activeOpacity={0.85} onPress={() => router.push('/upgrade')}>
+            <Card glowColor="gold" style={styles.upgradeCard}>
+              <View style={styles.upgradeIcon}>
+                <Crown size={20} color={colors.gold} />
+              </View>
+              <View style={styles.upgradeInfo}>
+                <Text style={styles.upgradeTitle}>Upgrade to Premium</Text>
+                <Text style={styles.upgradeSub}>AI plans, analytics & all ranks</Text>
+              </View>
+              <ChevronRight size={18} color={colors.gold} />
+            </Card>
+          </TouchableOpacity>
+        )}
+
         <Text style={styles.sectionTitle}>MY TARGETS</Text>
         <Card glowColor="blue" style={styles.targetsCard}>
           <View style={styles.targetGrid}>
@@ -185,6 +226,24 @@ export default function ProfileScreen() {
             </Card>
           </View>
         ))}
+
+        {Platform.OS !== 'web' && !isPremium && (
+          <TouchableOpacity
+            style={styles.restoreRow}
+            onPress={handleRestore}
+            activeOpacity={0.7}
+            disabled={restoring}
+          >
+            {restoring ? (
+              <ActivityIndicator size="small" color={colors.muted} />
+            ) : (
+              <>
+                <RotateCcw size={16} color={colors.muted} />
+                <Text style={styles.restoreRowText}>Restore purchases</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        )}
 
         <TouchableOpacity style={styles.logoutBtn} onPress={handleSignOut} activeOpacity={0.7}>
           <LogOut size={18} color={colors.red} />
@@ -321,6 +380,60 @@ const styles = StyleSheet.create({
     color: colors.muted,
     letterSpacing: 2,
     marginBottom: 12,
+  },
+  upgradeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    padding: 16,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(214,167,86,0.3)',
+  },
+  upgradeIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(214,167,86,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(214,167,86,0.25)',
+  },
+  upgradeInfo: { flex: 1 },
+  upgradeTitle: { fontFamily: fonts.bodyMedium, fontSize: 15, color: colors.gold },
+  upgradeSub: { fontFamily: fonts.body, fontSize: 12, color: colors.muted, marginTop: 2 },
+  premiumBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(214,167,86,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(214,167,86,0.3)',
+    borderRadius: radius.sm,
+    paddingVertical: 12,
+    marginBottom: 24,
+  },
+  premiumBadgeText: {
+    fontFamily: fonts.heading,
+    fontSize: 13,
+    color: colors.gold,
+    letterSpacing: 2,
+  },
+  restoreRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    marginBottom: 12,
+  },
+  restoreRowText: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    color: colors.muted,
+    textDecorationLine: 'underline',
   },
   targetsCard: { marginBottom: 24 },
   targetGrid: {
