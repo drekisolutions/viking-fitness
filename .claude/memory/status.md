@@ -29,6 +29,22 @@ Last updated: 2026-07-09 (branch claude/great-gauss-04189e — Council correctio
 - Known gap: app has no dedicated sign-IN screen (only signUp on the account screen); if
   Supabase email-confirmation is enabled, a returning unconfirmed user has no login path.
 
+## ✅ Council review round 2 (2026-07-28, commit c5ed880) — scored 62→~77/100
+- Ran the /council skill (Sentinel/Architect/Market/Executor + Synthesizer) on the payment
+  change set. Fixed code-side blockers/highs:
+  - **Free-premium hole closed**: client no longer writes profiles.plan; added migration
+    supabase/migrations/20260728000000_profiles_plan_lock.sql locking `plan` to service role
+    (trigger). **MUST run `supabase db push` for it to take effect.**
+  - Webhooks now return 5xx on DB-write failure (Stripe/RC retry); shared setPlan in
+    functions/_shared/plan.ts. delete-account cancels the Stripe sub. bmi rehydrates.
+    purchasePremium fails closed; constant-time secret compare; checkout fetch timeout;
+    .env.example + CI workflow; account.tsx uses shared/native price.
+  - **Deploy correction:** the Stripe `webhook` must also deploy with `--no-verify-jwt`.
+- **Escalated (owner):** Market flagged the paywall sells unbuilt "AI meal plans / AI workouts"
+  (status.md: not implemented, core loop hardcoded) — store-rejection/refund risk. Decision
+  needed: build them or remove the claims. Did NOT change marketing copy unilaterally. Also:
+  apply migration + deploy (needs Supabase auth), icon art (needs source).
+
 ---
 
 ## ✅ Done
