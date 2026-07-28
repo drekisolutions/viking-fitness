@@ -45,6 +45,19 @@ Last updated: 2026-07-09 (branch claude/great-gauss-04189e — Council correctio
   needed: build them or remove the claims. Did NOT change marketing copy unilaterally. Also:
   apply migration + deploy (needs Supabase auth), icon art (needs source).
 
+## ✅ AI features built (2026-07-28)
+- User chose to BUILD the AI features (resolving the Market blocker). Implemented:
+  - `supabase/functions/generate-plan/index.ts` — Claude (default `claude-opus-5`, env
+    `ANTHROPIC_MODEL`) via the official SDK (`npm:@anthropic-ai/sdk`), structured JSON output,
+    JWT-verified + **premium-gated server-side**, persists to new `generated_plans` table
+    (migration 20260728000100). Needs `ANTHROPIC_API_KEY` secret.
+  - `lib/ai.ts` (generatePlan/getLatestPlan + types) and `components/AIPlanCard.tsx` (premium
+    gate → /upgrade when free; generate/regenerate; renders meal & workout plans). Dropped into
+    `app/(tabs)/nutrition.tsx` (meal) and `training.tsx` (workout).
+  - Model is env-configurable; recommend `claude-haiku-4-5` for consumer-scale cost.
+  - tsc + web export clean. Deploy steps in docs/PLAY-LAUNCH-CHECKLIST.md Part 1.
+  - Still hardcoded/not-built: the free-tier food log + dashboards (real persistence pending).
+
 ---
 
 ## ✅ Done

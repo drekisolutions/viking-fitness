@@ -27,11 +27,13 @@ locks the `plan` column to the service role so users can't self-grant premium. N
 else is safe to rely on until this is applied:
 
 ```bash
-supabase db push        # applies supabase/migrations/20260728000000_profiles_plan_lock.sql
+supabase db push        # applies both migrations in supabase/migrations/
+                        #   20260728000000_profiles_plan_lock.sql   (locks plan)
+                        #   20260728000100_generated_plans.sql      (AI plan storage)
 ```
 
-(Or paste that migration file into the Supabase SQL editor and run it. It is written to be
-safe against the existing table — IF NOT EXISTS / CREATE OR REPLACE throughout.)
+(Or paste those migration files into the Supabase SQL editor and run them. They are written
+to be safe against the existing DB — IF NOT EXISTS / CREATE OR REPLACE throughout.)
 
 Then deploy the functions and set secrets:
 
@@ -41,6 +43,7 @@ supabase functions deploy create-checkout-session
 supabase functions deploy webhook --no-verify-jwt              # Stripe signs its own requests
 supabase functions deploy delete-account
 supabase functions deploy revenuecat-webhook --no-verify-jwt   # RC calls it with its own auth header
+supabase functions deploy generate-plan                        # AI meal/workout plans (premium)
 
 supabase secrets set \
   STRIPE_SECRET_KEY=sk_live_xxx \
@@ -48,12 +51,20 @@ supabase secrets set \
   STRIPE_ANNUAL_PRICE_ID=price_xxx \
   STRIPE_WEBHOOK_SECRET=whsec_xxx \
   APP_BASE_URL=https://viking-fitness-pink.vercel.app \
-  REVENUECAT_WEBHOOK_AUTH=<long-random-string>
+  REVENUECAT_WEBHOOK_AUTH=<long-random-string> \
+  ANTHROPIC_API_KEY=sk-ant-xxx
+# Optional: ANTHROPIC_MODEL=claude-haiku-4-5   (much cheaper/faster than the
+# claude-opus-5 default — recommended for consumer-scale generation; see below)
 ```
 
 `STRIPE_SECRET_KEY` is also read by `delete-account` (to cancel the web subscription when a
-user deletes their account). Redeploy the web app to Vercel afterwards so `/privacy`,
-`/terms`, and the new checkout client go live.
+user deletes their account). `ANTHROPIC_API_KEY` powers `generate-plan`. Redeploy the web app
+to Vercel afterwards so `/privacy`, `/terms`, and the new checkout client go live.
+
+> **AI model / cost:** `generate-plan` defaults to `claude-opus-5` ($5/$25 per 1M tokens). Each
+> plan is a small request, but at consumer scale set `ANTHROPIC_MODEL=claude-haiku-4-5`
+> ($1/$5) — it's more than capable for structured meal/workout generation. The model is
+> env-configurable so you can switch without a redeploy of the app.
 
 ---
 
@@ -141,18 +152,20 @@ eas submit --platform android --profile production   # needs the service-account
   real splash graphic; a small favicon. Verify each begins with PNG bytes `89 50 4E 47` before
   committing. (I can't regenerate the art here — it needs the source image.)
 
-## Part 5b — Product blocker from the Council review (owner decision, before charging)
+## Part 5b — AI features (built) + remaining product work
 
-- **Do not bill for unbuilt features (Market: CRITICAL).** The paywalls advertise "AI meal plans"
-  and "AI workouts", but per status.md those are not implemented and the core tracking loop is
-  hardcoded/non-persistent. Charging for non-functional headline features risks store rejection
-  (Apple 2.3.1 / 3.1.1, Play deceptive-purchase), trial-window refunds, and cold-start 1-star
-  reviews. **Decision needed:** either (a) build the AI features before enabling billing, or
-  (b) remove the two "AI …" bullets from `app/onboarding/account.tsx` (`PREMIUM_FEATURES`) and
-  `app/upgrade.tsx`, and re-scope premium around what actually works (progress photos, analytics,
-  all ranks). I did NOT change your marketing copy unilaterally — this is your call.
-- **Wire the core loop to real, persisted data before production.** Free-tier tracking must
-  genuinely log + persist or the freemium funnel has no floor. Fine for internal testing.
+- ✅ **"AI meal plans" and "AI workouts" are now real** (was the Council's CRITICAL "don't bill
+  for unbuilt features" blocker). Implemented via the `generate-plan` edge function (Claude,
+  premium-gated server-side) + the `AIPlanCard` on the Nutrition and Training tabs, persisted in
+  `generated_plans`. **Requires:** apply the `generated_plans` migration, deploy `generate-plan`,
+  and set `ANTHROPIC_API_KEY` (Part 1). Until then the card shows for premium users but generation
+  returns a "not configured" message.
+- **Validate generation quality on a real build before broad launch.** The prompt + schema are
+  solid, but review a handful of real generations for tone/accuracy, and confirm the model tier
+  fits your cost target (default `claude-opus-5`; `claude-haiku-4-5` recommended for scale).
+- **Wire the core tracking loop to real, persisted data before production.** The free-tier food
+  log / dashboards are still hardcoded — fine for internal testing, but the freemium funnel needs
+  a real logging floor before a wide rollout.
 
 ## Part 6 — Remaining known gaps (not launch blockers, tracked)
 
