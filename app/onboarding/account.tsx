@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -20,7 +20,9 @@ import { useUserStore } from '@/store/user';
 import { Card } from '@/components/ui/Card';
 import { colors, fonts, radius } from '@/constants/theme';
 import { supabase } from '@/lib/supabase';
+import { STRIPE_PRICES } from '@/lib/stripe';
 import { upgradeToPremium } from '@/lib/upgrade';
+import { getNativePrices } from '@/lib/purchases';
 
 const FREE_FEATURES = ['Meal tracking', 'Macro tracking', 'Basic workouts', 'Warrior ranks I–II'];
 const PREMIUM_FEATURES = [
@@ -41,8 +43,22 @@ export default function AccountScreen() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [monthlyPrice, setMonthlyPrice] = useState(STRIPE_PRICES.monthly.label);
 
-  const saveProfileToSupabase = async (userId: string, plan: 'free' | 'premium') => {
+  // On native, show the real localized store price rather than the USD default.
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    let active = true;
+    getNativePrices().then((p) => {
+      if (active && p.monthly) setMonthlyPrice(`${p.monthly}/mo`);
+    });
+    return () => { active = false; };
+  }, []);
+
+  // Note: `plan` is intentionally NOT written here. It is locked to the service
+  // role (RLS) and set only by the Stripe / RevenueCat webhooks — the client
+  // must never be able to grant itself premium.
+  const saveProfileToSupabase = async (userId: string) => {
     await supabase.from('profiles').update({
       name: onboarding.name,
       age: onboarding.age,
@@ -59,7 +75,6 @@ export default function AccountScreen() {
       carbs: onboarding.carbs,
       fat: onboarding.fat,
       bmi: onboarding.bmi,
-      plan,
       onboarding_complete: true,
     }).eq('id', userId);
   };
@@ -80,6 +95,7 @@ export default function AccountScreen() {
       protein: onboarding.protein,
       carbs: onboarding.carbs,
       fat: onboarding.fat,
+      bmi: onboarding.bmi,
       plan,
       onboardingComplete: true,
     });
@@ -122,7 +138,7 @@ export default function AccountScreen() {
     try {
       const userId = await signUpWithSession();
       if (userId) {
-        await saveProfileToSupabase(userId, plan);
+        await saveProfileToSupabase(userId);
         enterApp(userId, email, plan);
       }
     } catch (e: any) {
@@ -140,8 +156,9 @@ export default function AccountScreen() {
     try {
       const userId = await signUpWithSession();
       if (userId) {
-        // Save as free first — the payment webhook upgrades to premium
-        await saveProfileToSupabase(userId, 'free');
+        // New accounts default to the free plan (DB default); the payment
+        // webhook flips profiles.plan to premium after a successful purchase.
+        await saveProfileToSupabase(userId);
 
         // Single compliant path: web→Stripe, native→Play Billing/IAP, else fallback
         const outcome = await upgradeToPremium(userId, 'monthly');
@@ -189,6 +206,7 @@ export default function AccountScreen() {
       protein: onboarding.protein,
       carbs: onboarding.carbs,
       fat: onboarding.fat,
+      bmi: onboarding.bmi,
       plan: 'free',
       onboardingComplete: true,
     });
@@ -290,7 +308,7 @@ export default function AccountScreen() {
             {/* Premium card */}
             <Card glowColor="gold" style={[styles.planCard, styles.premiumCard]}>
               <Text style={styles.premiumTitle}>⭐ PREMIUM</Text>
-              <Text style={styles.premiumPrice}>$9.99/mo</Text>
+              <Text style={styles.premiumPrice}>{monthlyPrice}</Text>
               <View style={styles.planDivider} />
               {PREMIUM_FEATURES.map((f) => (
                 <View key={f} style={styles.featureRow}>

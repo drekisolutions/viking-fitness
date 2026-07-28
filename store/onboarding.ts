@@ -31,6 +31,7 @@ interface OnboardingState {
     heightFt?: number; heightIn?: number; weightLbs?: number;
     goal?: string; mealPlan?: string;
     calories?: number; protein?: number; carbs?: number; fat?: number;
+    bmi?: number;
   }) => void;
 }
 
@@ -67,6 +68,7 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
       protein:   p.protein   ?? state.protein,
       carbs:     p.carbs     ?? state.carbs,
       fat:       p.fat       ?? state.fat,
+      bmi:       p.bmi       ?? state.bmi,
     })),
 
   calculateResults: () => {

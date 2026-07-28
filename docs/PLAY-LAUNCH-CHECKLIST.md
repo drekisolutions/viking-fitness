@@ -22,21 +22,38 @@ Package: `com.drekilabs.vikingfitness` · EAS project: `66b7059a-065b-43d8-aa13-
 
 ## Part 1 — Backend deploys (free, do now)
 
+**FIRST apply the DB migration** — it creates/locks the `profiles` schema and, critically,
+locks the `plan` column to the service role so users can't self-grant premium. Nothing
+else is safe to rely on until this is applied:
+
+```bash
+supabase db push        # applies supabase/migrations/20260728000000_profiles_plan_lock.sql
+```
+
+(Or paste that migration file into the Supabase SQL editor and run it. It is written to be
+safe against the existing table — IF NOT EXISTS / CREATE OR REPLACE throughout.)
+
+Then deploy the functions and set secrets:
+
 ```bash
 # From the project root, linked to the Supabase project:
 supabase functions deploy create-checkout-session
-supabase functions deploy webhook
+supabase functions deploy webhook --no-verify-jwt              # Stripe signs its own requests
 supabase functions deploy delete-account
 supabase functions deploy revenuecat-webhook --no-verify-jwt   # RC calls it with its own auth header
 
 supabase secrets set \
+  STRIPE_SECRET_KEY=sk_live_xxx \
   STRIPE_MONTHLY_PRICE_ID=price_xxx \
   STRIPE_ANNUAL_PRICE_ID=price_xxx \
+  STRIPE_WEBHOOK_SECRET=whsec_xxx \
   APP_BASE_URL=https://viking-fitness-pink.vercel.app \
   REVENUECAT_WEBHOOK_AUTH=<long-random-string>
 ```
 
-Redeploy the web app to Vercel afterwards so `/privacy` and the new checkout client go live.
+`STRIPE_SECRET_KEY` is also read by `delete-account` (to cancel the web subscription when a
+user deletes their account). Redeploy the web app to Vercel afterwards so `/privacy`,
+`/terms`, and the new checkout client go live.
 
 ---
 
@@ -124,11 +141,38 @@ eas submit --platform android --profile production   # needs the service-account
   real splash graphic; a small favicon. Verify each begins with PNG bytes `89 50 4E 47` before
   committing. (I can't regenerate the art here — it needs the source image.)
 
+## Part 5b — Product blocker from the Council review (owner decision, before charging)
+
+- **Do not bill for unbuilt features (Market: CRITICAL).** The paywalls advertise "AI meal plans"
+  and "AI workouts", but per status.md those are not implemented and the core tracking loop is
+  hardcoded/non-persistent. Charging for non-functional headline features risks store rejection
+  (Apple 2.3.1 / 3.1.1, Play deceptive-purchase), trial-window refunds, and cold-start 1-star
+  reviews. **Decision needed:** either (a) build the AI features before enabling billing, or
+  (b) remove the two "AI …" bullets from `app/onboarding/account.tsx` (`PREMIUM_FEATURES`) and
+  `app/upgrade.tsx`, and re-scope premium around what actually works (progress photos, analytics,
+  all ranks). I did NOT change your marketing copy unilaterally — this is your call.
+- **Wire the core loop to real, persisted data before production.** Free-tier tracking must
+  genuinely log + persist or the freemium funnel has no floor. Fine for internal testing.
+
 ## Part 6 — Remaining known gaps (not launch blockers, tracked)
 
 - iOS path: RevenueCat wiring is platform-agnostic, but the App Store app, `EXPO_PUBLIC_REVENUECAT_IOS_API_KEY`, and Apple products are not set up yet. The iOS paywall also needs Apple's standard EULA link (or your own) — `/terms` covers the custom-EULA requirement.
 - RevenueCat webhook trusts the client-set `app_user_id` as the profiles key (gated by the shared secret). Low risk (griefing only), documented inline in `supabase/functions/revenuecat-webhook/index.ts`. Harden later with a stored RevenueCat↔user mapping + event-id idempotency.
+- Webhooks are idempotent (absolute state) but have no out-of-order/event-id guard — fine for internal testing, add an event ledger before production scale.
+- No dedicated sign-IN screen (account screen only does `signUp`); returning unconfirmed-email users have no login path.
 - Dashboard data (workouts, food log, weight) is still hardcoded; fine for internal testing, should be real before production rollout.
+
+### Resolved by Council review round 2 (2026-07-28)
+- ✅ **Free-premium hole closed** — `plan` is no longer written by the client; a DB migration
+  (`supabase/migrations/20260728000000_profiles_plan_lock.sql`) locks the column to the service
+  role. **Must apply the migration (Part 1) for this to take effect.**
+- ✅ Schema-as-code — `profiles` table + RLS now committed as a migration (was live-only).
+- ✅ Webhooks return 5xx on DB-write failure so Stripe/RevenueCat retry (was silently 200).
+- ✅ Account deletion now cancels the active Stripe subscription (was leaving it billing).
+- ✅ `bmi` now rehydrates on cold start (was showing "—" for returning users).
+- ✅ Onboarding card uses the shared price + localized native price (was hardcoded USD).
+- ✅ Purchase fails closed on term mismatch; constant-time webhook secret compare; checkout fetch timeout; `.env.example` + CI workflow added; shared `setPlan` extracted.
+- ⚠️ **Deploy correction:** the Stripe `webhook` must ALSO deploy with `--no-verify-jwt` (Stripe sends a signature, not a Supabase JWT) — see Part 1.
 
 ### Resolved by the review pass (2026-07-09)
 - ✅ Restore-purchases button — added to Profile (native) and the paywall.

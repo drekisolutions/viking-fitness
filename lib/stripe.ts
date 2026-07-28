@@ -40,15 +40,24 @@ export async function startCheckout(
       return { success: false, error: 'You must be signed in to upgrade.' };
     }
 
-    const res = await fetch(`${SUPABASE_URL}/functions/v1/create-checkout-session`, {
-      method: 'POST',
-      headers: {
-        'Content-Type':  'application/json',
-        'Authorization': `Bearer ${session.access_token}`,
-        'apikey':        ANON_KEY,
-      },
-      body: JSON.stringify({ plan }),
-    });
+    // Bound the request so a hung network call can't freeze the upgrade flow.
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 20000);
+    let res: Response;
+    try {
+      res = await fetch(`${SUPABASE_URL}/functions/v1/create-checkout-session`, {
+        method: 'POST',
+        headers: {
+          'Content-Type':  'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+          'apikey':        ANON_KEY,
+        },
+        body: JSON.stringify({ plan }),
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
 
     const data = await res.json();
     if (!res.ok) throw new Error(data.error ?? 'Checkout failed');
@@ -56,6 +65,9 @@ export async function startCheckout(
     window.location.href = data.url;
     return { success: true };
   } catch (err: any) {
-    return { success: false, error: err.message };
+    const message = err?.name === 'AbortError'
+      ? 'Checkout timed out. Please try again.'
+      : err?.message ?? 'Checkout failed.';
+    return { success: false, error: message };
   }
 }

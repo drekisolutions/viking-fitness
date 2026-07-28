@@ -1,5 +1,4 @@
 import { Platform } from 'react-native';
-import { supabase } from '@/lib/supabase';
 import { startCheckout, type StripePlan } from '@/lib/stripe';
 import {
   configurePurchases,
@@ -14,9 +13,11 @@ import {
 //   native → Google Play Billing / Apple IAP via RevenueCat
 //   otherwise (Expo Go / no key) → unavailable, caller shows a message
 //
-// The payment webhook (Stripe or RevenueCat) is the source of truth for
-// profiles.plan; the client update here is optimistic so the UI reflects the
-// purchase immediately.
+// The payment webhook (Stripe or RevenueCat) is the SOLE writer of
+// profiles.plan — the client never writes that column (it is locked to the
+// service role via RLS; see supabase/migrations). The UI reflects the purchase
+// immediately from the local Zustand store, and the DB catches up when the
+// webhook fires.
 
 export type UpgradeOutcome =
   | { status: 'redirecting' }                 // web: navigating to Stripe
@@ -69,7 +70,8 @@ export async function upgradeToPremium(
 
   const result = await purchasePremium(plan);
   if (result.success) {
-    await supabase.from('profiles').update({ plan: 'premium' }).eq('id', userId);
+    // profiles.plan is set by the RevenueCat webhook (service role); the caller
+    // updates the local store so the UI reflects premium immediately.
     return { status: 'purchased' };
   }
   if (result.userCancelled) return { status: 'cancelled' };
@@ -98,7 +100,7 @@ export async function restorePremium(userId: string): Promise<UpgradeOutcome> {
   await configurePurchases(userId);
   const result = await restoreNativePurchases();
   if (result.success) {
-    await supabase.from('profiles').update({ plan: 'premium' }).eq('id', userId);
+    // profiles.plan is reconciled by the RevenueCat webhook (service role).
     return { status: 'purchased' };
   }
   return { status: 'error', message: result.error ?? 'No active subscription found.' };

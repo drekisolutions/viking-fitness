@@ -10,26 +10,15 @@
 //   https://<project-ref>.supabase.co/functions/v1/webhook
 
 import Stripe from 'https://esm.sh/stripe@14?target=deno&no-check';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2?target=deno';
 import { corsHeaders } from '../_shared/cors.ts';
+import { createServiceClient, setPlan } from '../_shared/plan.ts';
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, {
   // @ts-ignore — Deno-compatible fetch
   httpClient: Stripe.createFetchHttpClient(),
 });
 
-const supabase = createClient(
-  Deno.env.get('SUPABASE_URL')!,
-  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-);
-
-const setPlan = async (userId: string, plan: 'premium' | 'free') => {
-  const { error } = await supabase
-    .from('profiles')
-    .update({ plan })
-    .eq('id', userId);
-  if (error) console.error('setPlan error:', error);
-};
+const supabase = createServiceClient();
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
@@ -56,31 +45,41 @@ Deno.serve(async (req: Request) => {
 
   const obj = event.data.object as any;
 
-  switch (event.type) {
-    case 'checkout.session.completed': {
-      const userId = obj.metadata?.userId;
-      if (userId) await setPlan(userId, 'premium');
-      break;
+  try {
+    switch (event.type) {
+      case 'checkout.session.completed': {
+        const userId = obj.metadata?.userId;
+        if (userId) await setPlan(supabase, userId, 'premium');
+        break;
+      }
+      case 'customer.subscription.deleted':
+      case 'customer.subscription.paused': {
+        const userId = obj.metadata?.userId;
+        if (userId) await setPlan(supabase, userId, 'free');
+        break;
+      }
+      case 'customer.subscription.resumed':
+      case 'invoice.payment_succeeded': {
+        const userId =
+          obj.metadata?.userId ??
+          obj.subscription_details?.metadata?.userId;
+        if (userId) await setPlan(supabase, userId, 'premium');
+        break;
+      }
+      case 'invoice.payment_failed':
+        console.log('Payment failed for invoice:', obj.id);
+        break;
+      default:
+        console.log('Unhandled event type:', event.type);
     }
-    case 'customer.subscription.deleted':
-    case 'customer.subscription.paused': {
-      const userId = obj.metadata?.userId;
-      if (userId) await setPlan(userId, 'free');
-      break;
-    }
-    case 'customer.subscription.resumed':
-    case 'invoice.payment_succeeded': {
-      const userId =
-        obj.metadata?.userId ??
-        obj.subscription_details?.metadata?.userId;
-      if (userId) await setPlan(userId, 'premium');
-      break;
-    }
-    case 'invoice.payment_failed':
-      console.log('Payment failed for invoice:', obj.id);
-      break;
-    default:
-      console.log('Unhandled event type:', event.type);
+  } catch (err: any) {
+    // Return 5xx so Stripe retries — do NOT ack a failed DB write, or the
+    // customer stays on the wrong plan with no recovery.
+    console.error('Webhook handler error:', err.message);
+    return new Response(
+      JSON.stringify({ error: 'Handler failed; will retry' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   }
 
   return new Response(

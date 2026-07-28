@@ -12,12 +12,9 @@
 // Keeps profiles.plan in sync with Play Billing / App Store subscription
 // state, the same way the Stripe webhook does for web checkout.
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2?target=deno';
+import { createServiceClient, setPlan } from '../_shared/plan.ts';
 
-const supabase = createClient(
-  Deno.env.get('SUPABASE_URL')!,
-  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-);
+const supabase = createServiceClient();
 
 const PREMIUM_EVENTS = new Set([
   'INITIAL_PURCHASE',
@@ -30,13 +27,23 @@ const PREMIUM_EVENTS = new Set([
 // CANCELLATION only turns off auto-renew; access lasts until EXPIRATION.
 const FREE_EVENTS = new Set(['EXPIRATION']);
 
-const setPlan = async (userId: string, plan: 'premium' | 'free') => {
-  const { error } = await supabase
-    .from('profiles')
-    .update({ plan })
-    .eq('id', userId);
-  if (error) console.error('setPlan error:', error);
-};
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+// Constant-time string comparison so the shared-secret check does not leak the
+// secret through response timing.
+function timingSafeEqual(a: string, b: string): boolean {
+  const enc = new TextEncoder();
+  const ab = enc.encode(a);
+  const bb = enc.encode(b);
+  if (ab.length !== bb.length) return false;
+  let diff = 0;
+  for (let i = 0; i < ab.length; i++) diff |= ab[i] ^ bb[i];
+  return diff === 0;
+}
 
 Deno.serve(async (req: Request) => {
   if (req.method !== 'POST') {
@@ -44,15 +51,21 @@ Deno.serve(async (req: Request) => {
   }
 
   const expected = Deno.env.get('REVENUECAT_WEBHOOK_AUTH');
-  if (!expected || req.headers.get('Authorization') !== expected) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' },
-    });
+  const provided = req.headers.get('Authorization') ?? '';
+  if (!expected || !timingSafeEqual(provided, expected)) {
+    return json({ error: 'Unauthorized' }, 401);
+  }
+
+  // Parse the payload separately from processing so a malformed body is a 400
+  // (do not retry) while a DB write failure is a 500 (RevenueCat retries).
+  let event: any;
+  try {
+    ({ event } = await req.json());
+  } catch {
+    return json({ error: 'Invalid webhook payload' }, 400);
   }
 
   try {
-    const { event } = await req.json();
     const userId: string | undefined = event?.app_user_id;
 
     // NOTE: app_user_id is set client-side (lib/purchases.ts) and is trusted
@@ -65,19 +78,16 @@ Deno.serve(async (req: Request) => {
     // Ignore RevenueCat anonymous ids — purchases are configured with the
     // Supabase user id as app_user_id (see lib/purchases.ts).
     if (userId && !userId.startsWith('$RCAnonymousID:')) {
-      if (PREMIUM_EVENTS.has(event.type)) await setPlan(userId, 'premium');
-      else if (FREE_EVENTS.has(event.type)) await setPlan(userId, 'free');
+      if (PREMIUM_EVENTS.has(event.type)) await setPlan(supabase, userId, 'premium');
+      else if (FREE_EVENTS.has(event.type)) await setPlan(supabase, userId, 'free');
       else console.log('Unhandled RevenueCat event type:', event.type);
     }
 
-    return new Response(JSON.stringify({ received: true }), {
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return json({ received: true });
   } catch (err: any) {
-    console.error('RevenueCat webhook error:', err);
-    return new Response(JSON.stringify({ error: 'Invalid webhook payload' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    // DB write failed — return 5xx so RevenueCat retries rather than dropping
+    // the subscription state change.
+    console.error('RevenueCat webhook handler error:', err.message);
+    return json({ error: 'Handler failed; will retry' }, 500);
   }
 });

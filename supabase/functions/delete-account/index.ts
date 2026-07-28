@@ -1,14 +1,48 @@
 // Supabase Edge Function — Account Deletion
 // Runs on Deno; deploy with: supabase functions deploy delete-account
-// Required secrets: none beyond the auto-injected
-//   SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
+// Required secrets:
+//   SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY  (auto-injected)
+//   STRIPE_SECRET_KEY  (optional — enables cancelling the web subscription so
+//                       the card isn't charged after the account is gone)
 //
 // Google Play requires apps that offer account creation to offer account
 // deletion. The caller is identified from their verified JWT only — a user
 // can delete exactly one account: their own.
+//
+// NOTE: store-managed subscriptions (Google Play / Apple) cannot be cancelled
+// server-side and must be cancelled by the user in their store settings; this
+// is disclosed in the privacy policy / terms.
 
+import Stripe from 'https://esm.sh/stripe@14?target=deno&no-check';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2?target=deno';
 import { corsHeaders } from '../_shared/cors.ts';
+
+// Best-effort cancellation of any active Stripe (web) subscription for this
+// user's email, so deletion does not leave a live recurring charge.
+async function cancelStripeSubscriptions(email: string | undefined) {
+  const key = Deno.env.get('STRIPE_SECRET_KEY');
+  if (!key || !email) return;
+  try {
+    const stripe = new Stripe(key, {
+      // @ts-ignore — Deno-compatible fetch
+      httpClient: Stripe.createFetchHttpClient(),
+    });
+    const customers = await stripe.customers.list({ email, limit: 10 });
+    for (const customer of customers.data) {
+      const subs = await stripe.subscriptions.list({
+        customer: customer.id,
+        status: 'active',
+        limit: 100,
+      });
+      for (const sub of subs.data) {
+        await stripe.subscriptions.cancel(sub.id);
+      }
+    }
+  } catch (e) {
+    // Do not block account deletion on a Stripe error — log and continue.
+    console.error('delete-account: Stripe cancellation failed (continuing):', e);
+  }
+}
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -38,6 +72,9 @@ Deno.serve(async (req: Request) => {
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
+
+    // Stop web billing before removing the account.
+    await cancelStripeSubscriptions(user.email);
 
     const { error: profileError } = await admin
       .from('profiles')

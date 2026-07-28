@@ -110,12 +110,15 @@ export async function purchasePremium(
       return { success: false, error: 'No subscription offering is configured.' };
     }
 
-    const pkg =
-      plan === 'annual'
-        ? offering.annual ?? offering.availablePackages[0]
-        : offering.monthly ?? offering.availablePackages[0];
+    // Fail closed: only ever purchase the package matching the requested term.
+    // Never fall back to availablePackages[0], which could charge for the wrong
+    // plan (e.g. a "monthly" tap buying the annual package).
+    const pkg = plan === 'annual' ? offering.annual : offering.monthly;
     if (!pkg) {
-      return { success: false, error: 'No subscription package is available.' };
+      return {
+        success: false,
+        error: `The ${plan} plan is not available right now. Please try again later.`,
+      };
     }
 
     const { customerInfo } = await Purchases.purchasePackage(pkg);

@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Web export (build smoke test)
+        run: npx expo export --platform web
+        env:
+          # Dummy public values so the export doesn't fail on missing env;
+          # no secrets are needed for a static web export.
+          EXPO_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: dummy-anon-key
