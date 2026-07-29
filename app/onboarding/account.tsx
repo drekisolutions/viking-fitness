@@ -55,11 +55,18 @@ export default function AccountScreen() {
     return () => { active = false; };
   }, []);
 
-  // Note: `plan` is intentionally NOT written here. It is locked to the service
-  // role (RLS) and set only by the Stripe / RevenueCat webhooks — the client
-  // must never be able to grant itself premium.
+  // Upsert (not update): the profiles row does not exist until the client
+  // creates it — there is no on-signup DB trigger — so a plain UPDATE would
+  // affect 0 rows and both this profile and the later payment-webhook plan
+  // write would have nothing to target.
+  //
+  // `plan` is intentionally NOT written here: the lock_plan_column trigger
+  // forces it to 'free' on insert and preserves it on update for any non-service
+  // writer, so the client can never grant itself premium. Only the Stripe /
+  // RevenueCat webhooks (service role) may change it.
   const saveProfileToSupabase = async (userId: string) => {
-    await supabase.from('profiles').update({
+    await supabase.from('profiles').upsert({
+      id: userId,
       name: onboarding.name,
       age: onboarding.age,
       sex: onboarding.sex,
@@ -76,7 +83,7 @@ export default function AccountScreen() {
       fat: onboarding.fat,
       bmi: onboarding.bmi,
       onboarding_complete: true,
-    }).eq('id', userId);
+    });
   };
 
   const enterApp = (userId: string, userEmail: string, plan: 'free' | 'premium') => {
@@ -354,6 +361,13 @@ export default function AccountScreen() {
           <TouchableOpacity onPress={handleSkip} style={styles.skipBtn}>
             <Text style={styles.skipText}>Continue without account</Text>
           </TouchableOpacity>
+
+          <View style={styles.signinRow}>
+            <Text style={styles.signinPrompt}>Already have an account? </Text>
+            <TouchableOpacity onPress={() => router.push('/signin')} hitSlop={8}>
+              <Text style={styles.signinLink}>Sign In</Text>
+            </TouchableOpacity>
+          </View>
         </ScrollView>
       </SafeAreaView>
     </KeyboardAvoidingView>
@@ -547,5 +561,21 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.muted,
     textDecorationLine: 'underline',
+  },
+  signinRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingBottom: 8,
+  },
+  signinPrompt: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    color: colors.muted,
+  },
+  signinLink: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 13,
+    color: colors.blue,
   },
 });

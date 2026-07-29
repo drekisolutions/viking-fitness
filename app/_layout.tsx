@@ -60,6 +60,7 @@ export default function RootLayout() {
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.black } }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="onboarding" />
+        <Stack.Screen name="signin" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="success" />
         <Stack.Screen name="upgrade" />
