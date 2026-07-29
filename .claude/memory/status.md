@@ -1,6 +1,20 @@
 # Viking Fitness — Build Status
 
-Last updated: 2026-07-09 (branch claude/great-gauss-04189e — Council corrections + Play launch prep)
+Last updated: 2026-07-29 (branch claude/great-gauss-04189e — GitHub step completed, PR #1 merged to master)
+
+## ✅ GitHub step complete (2026-07-29, this session)
+- Owner ran `gh auth login` (account drekisolutions). Repo already existed from a prior
+  session: **drekisolutions/viking-fitness**, private, default branch `master`; both
+  branches were already pushed and in sync.
+- **PR #1** (claude/great-gauss-04189e → master; 7 commits, +2741/−301, 36 files — all the
+  Play-Billing/checkout/adversarial-review/Council-round-2/AI-features work) was green
+  (CI: tsc + web export SUCCESS) and cleanly mergeable. **Merged to master** with a merge
+  commit (359d0b2) at owner's direction.
+- **Branch protection NOT enabled:** GitHub's free plan blocks protection rules on private
+  repos (403 "Upgrade to Pro or make public"). Owner decision — upgrade to GitHub Pro,
+  make the repo public, or rely on PR-workflow discipline. Not actionable from the CLI.
+- **Next in pipeline:** Step 3 Vercel (`expo export --platform web` → deploy) and Step 4
+  Supabase (apply migrations + deploy edge functions/secrets) — both still owner-auth-gated.
 
 ## ✅ Council review corrections (2026-07-09)
 - Play compliance: RevenueCat/Play Billing is now the native payment path (`lib/purchases.ts`);
@@ -75,19 +89,16 @@ Last updated: 2026-07-09 (branch claude/great-gauss-04189e — Council correctio
 - Fixed: react-native-worklets missing dep
 - Fixed: newArchEnabled + reanimated version alignment
 
-### GitHub (Step 2)
-- Git initialized in project root
-- Initial commit made (36 files)
-- ⚠️ GitHub repo NOT yet created — needs `gh auth login`
+### GitHub (Step 2) — ✅ COMPLETE (2026-07-29)
+- Private repo drekisolutions/viking-fitness created and pushed
+- PR #1 merged to master (merge commit 359d0b2); CI green
+- Branch protection blocked by GitHub free plan (owner decision — see top section)
 
 ---
 
 ## 🔄 In Progress
 
-### GitHub (Step 2)
-- `gh` CLI installed (v2.92.0)
-- **BLOCKED:** User needs to run `gh auth login` in terminal
-- After login: create private repo → push → protect main branch
+_(GitHub step done — see top section. Next: Vercel + Supabase deploys, both owner-auth-gated.)_
 
 ---
 
