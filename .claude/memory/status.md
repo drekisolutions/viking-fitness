@@ -16,6 +16,23 @@ Last updated: 2026-07-29 (branch claude/great-gauss-04189e — GitHub step compl
 - **Next in pipeline:** Step 3 Vercel (`expo export --platform web` → deploy) and Step 4
   Supabase (apply migrations + deploy edge functions/secrets) — both still owner-auth-gated.
 
+## ✅ Sign-in screen + profiles-row persistence fix (2026-07-29, this session)
+- Built `app/signin.tsx` (email/password via `signInWithPassword`) and wired it into the
+  onboarding welcome "Sign In" link and a new link on the account (sign-up) screen. Detects
+  the "email not confirmed" error and offers to resend the confirmation link — **closes the
+  known gap** where a returning, unconfirmed user had no login path.
+- **Critical bug fixed:** nothing ever created a `profiles` row (no on-signup trigger;
+  `account.tsx` + the payment webhook both used UPDATE → 0 rows on a missing row). Free
+  sign-ups persisted nothing, and a premium purchase would have **stranded the payer on
+  free**. `account.tsx` now **upserts** the row; `plan` stays service-role-locked via the
+  `lock_plan_column` trigger, so the client still can't self-grant premium. NOTE: still
+  needs the profiles migration applied (`supabase db push`) for the row/RLS/trigger to exist.
+- Refactored the DB→client profile mapping (was duplicated 3×) into `lib/session.ts`
+  (`fetchAppProfile`), now shared by `index.tsx`, `success.tsx`, `signin.tsx`.
+- Commit 1dcf959. tsc + web export clean; `/signin` bundles.
+- Follow-ups: forgot-password (needs a reset-completion screen + deep-link/Site-URL config);
+  optional `handle_new_user` DB trigger as defense-in-depth for the profiles row.
+
 ## ✅ Council review corrections (2026-07-09)
 - Play compliance: RevenueCat/Play Billing is now the native payment path (`lib/purchases.ts`);
   Stripe checkout is web-only. Requires EAS build to test (not Expo Go).
@@ -136,7 +153,8 @@ _(GitHub step done — see top section. Next: Vercel + Supabase deploys, both ow
 ---
 
 ## Known Issues / Tech Debt
-- Auth in `account.tsx` is mock only (sets profile directly in Zustand)
+- Auth is real Supabase now: signUp on `account.tsx`, signIn on `signin.tsx`. The
+  "no dedicated sign-IN screen" gap is CLOSED (2026-07-29).
 - All dashboard data (workouts, food log, weight) is hardcoded/static
 - No persistence — Zustand state resets on app restart (needs AsyncStorage or Supabase)
 - Profile photo is a Pexels placeholder URL
