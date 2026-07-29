@@ -11,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Play, Clock, Flame, ChevronRight, Dumbbell } from 'lucide-react-native';
 import { Card } from '@/components/ui/Card';
+import { AIPlanCard } from '@/components/AIPlanCard';
 import { colors, fonts, radius } from '@/constants/theme';
 
 const SPLITS = ['PPL', 'Upper/Lower', 'Full Body', 'Bro Split'];
@@ -102,6 +103,8 @@ export default function TrainingScreen() {
             </TouchableOpacity>
           ))}
         </View>
+
+        <AIPlanCard type="workout" />
 
         <Text style={styles.sectionTitle}>THIS WEEK'S SCHEDULE</Text>
         <View style={styles.workoutList}>

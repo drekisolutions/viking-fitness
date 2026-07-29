@@ -41,6 +41,8 @@ export default function Index() {
               protein: dbProfile.protein || 0,
               carbs: dbProfile.carbs || 0,
               fat: dbProfile.fat || 0,
+              bmi: dbProfile.bmi || 0,
+              plan: (dbProfile.plan as 'free' | 'premium') || 'free',
               onboardingComplete: dbProfile.onboarding_complete ?? false,
             };
             setProfile(profileData);

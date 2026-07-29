@@ -15,6 +15,8 @@ interface UserProfile {
   protein: number;
   carbs: number;
   fat: number;
+  bmi: number;
+  plan: 'free' | 'premium';
   onboardingComplete: boolean;
 }
 

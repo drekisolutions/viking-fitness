@@ -11,6 +11,7 @@ import { StatusBar } from 'expo-status-bar';
 import { Plus, Search, ChevronDown, ChevronUp, Info, TriangleAlert } from 'lucide-react-native';
 import { useOnboardingStore } from '@/store/onboarding';
 import { Card } from '@/components/ui/Card';
+import { AIPlanCard } from '@/components/AIPlanCard';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { colors, fonts, radius } from '@/constants/theme';
 import { getPlanInfo, getDayMeals, type MealPlanInfo } from '@/constants/mealPlans';
@@ -303,6 +304,9 @@ export default function NutritionScreen() {
           <>
             {/* GLP-1 Alert */}
             {plan.isGlp1 && <Glp1Alert plan={plan} />}
+
+            {/* AI meal plan (premium) */}
+            <AIPlanCard type="meal" />
 
             {/* Summary */}
             <SummaryCard

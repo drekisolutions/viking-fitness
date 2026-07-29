@@ -1,6 +1,62 @@
 # Viking Fitness — Build Status
 
-Last updated: 2026-05-16
+Last updated: 2026-07-09 (branch claude/great-gauss-04189e — Council corrections + Play launch prep)
+
+## ✅ Council review corrections (2026-07-09)
+- Play compliance: RevenueCat/Play Billing is now the native payment path (`lib/purchases.ts`);
+  Stripe checkout is web-only. Requires EAS build to test (not Expo Go).
+- Security: `create-checkout-session` edge function now verifies the JWT, derives user
+  server-side, allowlists plans (price IDs are Supabase secrets), fixed redirect URLs.
+- Removed duplicate `api/` Vercel routes + `stripe` dep; Supabase edge functions are the backend.
+- app.json: removed invalid autoVerify bare-scheme intentFilter; EAS projectId written
+  (66b7059a-065b-43d8-aa13-6ffac05ed0e3, owner dreki_solutions).
+- Added `/privacy` page, in-app account deletion (+ `delete-account` edge function),
+  `revenuecat-webhook` edge function; re-added missing `react-native-worklets` dep.
+- **Next:** owner actions in `docs/PLAY-LAUNCH-CHECKLIST.md` (Play Console app, RevenueCat
+  project, deploy edge functions/secrets, then EAS production build — paid, needs confirmation).
+
+## ✅ Post-review hardening (2026-07-09, opus session)
+- Added post-onboarding paywall (`app/upgrade.tsx`), restore-purchases, and a client
+  `plan` field hydrated on start/success/onboarding.
+- Ran an adversarial multi-agent review (5 dimensions, per-finding verification): 13
+  confirmed findings, 11 fixed in code, commit 3389030. Fixes: subscription legal
+  disclosure + Terms(`/terms`)/Privacy links at point of purchase, in-app privacy
+  reachability, guest-purchase guard, email-confirmation session guard, native RC price
+  display, `__proto__` allowlist, generic edge errors, missing catch handlers.
+- **OPEN HIGH (owner):** `assets/*.png` are all one JPEG renamed to .png (no alpha) —
+  Android adaptive icon renders cropped/broken. Needs the real Viking-head art re-exported
+  as true PNGs before store submission. See checklist Part 5.
+- Known gap: app has no dedicated sign-IN screen (only signUp on the account screen); if
+  Supabase email-confirmation is enabled, a returning unconfirmed user has no login path.
+
+## ✅ Council review round 2 (2026-07-28, commit c5ed880) — scored 62→~77/100
+- Ran the /council skill (Sentinel/Architect/Market/Executor + Synthesizer) on the payment
+  change set. Fixed code-side blockers/highs:
+  - **Free-premium hole closed**: client no longer writes profiles.plan; added migration
+    supabase/migrations/20260728000000_profiles_plan_lock.sql locking `plan` to service role
+    (trigger). **MUST run `supabase db push` for it to take effect.**
+  - Webhooks now return 5xx on DB-write failure (Stripe/RC retry); shared setPlan in
+    functions/_shared/plan.ts. delete-account cancels the Stripe sub. bmi rehydrates.
+    purchasePremium fails closed; constant-time secret compare; checkout fetch timeout;
+    .env.example + CI workflow; account.tsx uses shared/native price.
+  - **Deploy correction:** the Stripe `webhook` must also deploy with `--no-verify-jwt`.
+- **Escalated (owner):** Market flagged the paywall sells unbuilt "AI meal plans / AI workouts"
+  (status.md: not implemented, core loop hardcoded) — store-rejection/refund risk. Decision
+  needed: build them or remove the claims. Did NOT change marketing copy unilaterally. Also:
+  apply migration + deploy (needs Supabase auth), icon art (needs source).
+
+## ✅ AI features built (2026-07-28)
+- User chose to BUILD the AI features (resolving the Market blocker). Implemented:
+  - `supabase/functions/generate-plan/index.ts` — Claude (default `claude-opus-5`, env
+    `ANTHROPIC_MODEL`) via the official SDK (`npm:@anthropic-ai/sdk`), structured JSON output,
+    JWT-verified + **premium-gated server-side**, persists to new `generated_plans` table
+    (migration 20260728000100). Needs `ANTHROPIC_API_KEY` secret.
+  - `lib/ai.ts` (generatePlan/getLatestPlan + types) and `components/AIPlanCard.tsx` (premium
+    gate → /upgrade when free; generate/regenerate; renders meal & workout plans). Dropped into
+    `app/(tabs)/nutrition.tsx` (meal) and `training.tsx` (workout).
+  - Model is env-configurable; recommend `claude-haiku-4-5` for consumer-scale cost.
+  - tsc + web export clean. Deploy steps in docs/PLAY-LAUNCH-CHECKLIST.md Part 1.
+  - Still hardcoded/not-built: the free-tier food log + dashboards (real persistence pending).
 
 ---
 

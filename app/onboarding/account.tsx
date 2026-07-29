@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -20,7 +20,9 @@ import { useUserStore } from '@/store/user';
 import { Card } from '@/components/ui/Card';
 import { colors, fonts, radius } from '@/constants/theme';
 import { supabase } from '@/lib/supabase';
-import { startCheckout, STRIPE_PRICES } from '@/lib/stripe';
+import { STRIPE_PRICES } from '@/lib/stripe';
+import { upgradeToPremium } from '@/lib/upgrade';
+import { getNativePrices } from '@/lib/purchases';
 
 const FREE_FEATURES = ['Meal tracking', 'Macro tracking', 'Basic workouts', 'Warrior ranks I–II'];
 const PREMIUM_FEATURES = [
@@ -41,9 +43,22 @@ export default function AccountScreen() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<'free' | 'premium'>('free');
+  const [monthlyPrice, setMonthlyPrice] = useState(STRIPE_PRICES.monthly.label);
 
-  const saveProfileToSupabase = async (userId: string, plan: 'free' | 'premium') => {
+  // On native, show the real localized store price rather than the USD default.
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    let active = true;
+    getNativePrices().then((p) => {
+      if (active && p.monthly) setMonthlyPrice(`${p.monthly}/mo`);
+    });
+    return () => { active = false; };
+  }, []);
+
+  // Note: `plan` is intentionally NOT written here. It is locked to the service
+  // role (RLS) and set only by the Stripe / RevenueCat webhooks — the client
+  // must never be able to grant itself premium.
+  const saveProfileToSupabase = async (userId: string) => {
     await supabase.from('profiles').update({
       name: onboarding.name,
       age: onboarding.age,
@@ -60,7 +75,6 @@ export default function AccountScreen() {
       carbs: onboarding.carbs,
       fat: onboarding.fat,
       bmi: onboarding.bmi,
-      plan,
       onboarding_complete: true,
     }).eq('id', userId);
   };
@@ -81,27 +95,51 @@ export default function AccountScreen() {
       protein: onboarding.protein,
       carbs: onboarding.carbs,
       fat: onboarding.fat,
+      bmi: onboarding.bmi,
+      plan,
       onboardingComplete: true,
     });
     router.replace('/(tabs)');
   };
 
-  const handleEmailSignUp = async (plan: 'free' | 'premium') => {
+  const validateCredentials = () => {
     if (!email.trim() || !password.trim()) {
       Alert.alert('Missing fields', 'Please enter your email and password.');
-      return;
+      return false;
     }
     if (password.length < 6) {
       Alert.alert('Password too short', 'Password must be at least 6 characters.');
-      return;
+      return false;
     }
+    return true;
+  };
+
+  // Sign up and return the user id ONLY when an authenticated session exists.
+  // With Supabase email-confirmation enabled (the default), signUp returns a
+  // user but no session — entering the app then would silently discard the
+  // profile (RLS blocks the write) and strand the user, so we stop here.
+  const signUpWithSession = async (): Promise<string | null> => {
+    const { data, error } = await supabase.auth.signUp({ email, password });
+    if (error) throw error;
+    if (!data.user) return null;
+    if (!data.session) {
+      Alert.alert(
+        'Confirm your email',
+        'We sent a confirmation link to your email. Confirm it, then sign in to continue.',
+      );
+      return null;
+    }
+    return data.user.id;
+  };
+
+  const handleEmailSignUp = async (plan: 'free' | 'premium') => {
+    if (!validateCredentials()) return;
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signUp({ email, password });
-      if (error) throw error;
-      if (data.user) {
-        await saveProfileToSupabase(data.user.id, plan);
-        enterApp(data.user.id, email, plan);
+      const userId = await signUpWithSession();
+      if (userId) {
+        await saveProfileToSupabase(userId);
+        enterApp(userId, email, plan);
       }
     } catch (e: any) {
       Alert.alert('Sign up failed', e.message);
@@ -113,45 +151,36 @@ export default function AccountScreen() {
   const handleContinueFree = () => handleEmailSignUp('free');
 
   const handleContinuePremium = async () => {
-    if (!email.trim() || !password.trim()) {
-      Alert.alert('Missing fields', 'Please enter your email and password.');
-      return;
-    }
-    if (password.length < 6) {
-      Alert.alert('Password too short', 'Password must be at least 6 characters.');
-      return;
-    }
+    if (!validateCredentials()) return;
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signUp({ email, password });
-      if (error) throw error;
-      if (data.user) {
-        // Save as free first — Stripe webhook upgrades to premium after payment
-        await saveProfileToSupabase(data.user.id, 'free');
+      const userId = await signUpWithSession();
+      if (userId) {
+        // New accounts default to the free plan (DB default); the payment
+        // webhook flips profiles.plan to premium after a successful purchase.
+        await saveProfileToSupabase(userId);
 
-        // On mobile: enter the app now, checkout opens in browser
-        if (Platform.OS !== 'web') {
-          enterApp(data.user.id, email, 'free');
+        // Single compliant path: web→Stripe, native→Play Billing/IAP, else fallback
+        const outcome = await upgradeToPremium(userId, 'monthly');
+        switch (outcome.status) {
+          case 'redirecting':
+            // Web: the page is navigating to Stripe — nothing more to do.
+            break;
+          case 'purchased':
+            enterApp(userId, email, 'premium');
+            break;
+          case 'cancelled':
+            enterApp(userId, email, 'free');
+            break;
+          case 'unavailable':
+          case 'error':
+            Alert.alert(
+              outcome.status === 'unavailable' ? 'Upgrade Unavailable' : 'Checkout Unavailable',
+              `${outcome.message} You can upgrade anytime from your profile.`,
+            );
+            enterApp(userId, email, 'free');
+            break;
         }
-
-        // Open Stripe checkout
-        const result = await startCheckout(
-          STRIPE_PRICES.monthly.id,
-          data.user.id,
-          email
-        );
-
-        if (!result.success) {
-          // Checkout failed — enter as free with a note to upgrade later
-          Alert.alert(
-            'Checkout Unavailable',
-            result.error || 'Could not open checkout. You can upgrade anytime from your profile.',
-          );
-          if (Platform.OS === 'web') {
-            enterApp(data.user.id, email, 'free');
-          }
-        }
-        // On web: startCheckout redirects page to Stripe — no enterApp needed
       }
     } catch (e: any) {
       Alert.alert('Sign up failed', e.message);
@@ -177,6 +206,8 @@ export default function AccountScreen() {
       protein: onboarding.protein,
       carbs: onboarding.carbs,
       fat: onboarding.fat,
+      bmi: onboarding.bmi,
+      plan: 'free',
       onboardingComplete: true,
     });
     router.replace('/(tabs)');
@@ -277,7 +308,7 @@ export default function AccountScreen() {
             {/* Premium card */}
             <Card glowColor="gold" style={[styles.planCard, styles.premiumCard]}>
               <Text style={styles.premiumTitle}>⭐ PREMIUM</Text>
-              <Text style={styles.premiumPrice}>$9.99/mo</Text>
+              <Text style={styles.premiumPrice}>{monthlyPrice}</Text>
               <View style={styles.planDivider} />
               {PREMIUM_FEATURES.map((f) => (
                 <View key={f} style={styles.featureRow}>
@@ -303,6 +334,22 @@ export default function AccountScreen() {
           <Text style={styles.trialNote}>
             7-day free trial included · Cancel anytime
           </Text>
+
+          <Text style={styles.disclosure}>
+            Premium is an auto-renewing subscription that renews unless canceled at least 24
+            hours before the period ends. Manage or cancel anytime in your store account
+            settings.
+          </Text>
+
+          <View style={styles.legalRow}>
+            <TouchableOpacity onPress={() => router.push('/terms')} hitSlop={8}>
+              <Text style={styles.legalLink}>Terms of Use</Text>
+            </TouchableOpacity>
+            <Text style={styles.legalDot}>·</Text>
+            <TouchableOpacity onPress={() => router.push('/privacy')} hitSlop={8}>
+              <Text style={styles.legalLink}>Privacy Policy</Text>
+            </TouchableOpacity>
+          </View>
 
           <TouchableOpacity onPress={handleSkip} style={styles.skipBtn}>
             <Text style={styles.skipText}>Continue without account</Text>
@@ -468,6 +515,28 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 16,
   },
+  disclosure: {
+    fontFamily: fonts.body,
+    fontSize: 11,
+    color: colors.muted,
+    textAlign: 'center',
+    lineHeight: 16,
+    marginTop: 10,
+  },
+  legalRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 8,
+  },
+  legalLink: {
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: colors.blue,
+    textDecorationLine: 'underline',
+  },
+  legalDot: { fontFamily: fonts.body, fontSize: 12, color: colors.muted },
   skipBtn: {
     alignItems: 'center',
     paddingVertical: 16,
