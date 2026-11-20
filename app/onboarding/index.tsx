@@ -192,7 +192,7 @@ export default function OnboardingWelcome() {
 
               <View style={styles.signinRow}>
                 <Text style={styles.signinText}>Already have an account? </Text>
-                <TouchableOpacity onPress={() => router.push('/onboarding/account')}>
+                <TouchableOpacity onPress={() => router.push('/signin')}>
                   <Text style={styles.signinLink}>Sign In</Text>
                 </TouchableOpacity>
               </View>
