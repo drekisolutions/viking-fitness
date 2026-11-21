@@ -2,7 +2,7 @@
   "expo": {
     "name": "Viking Fitness",
     "slug": "viking-fitness",
-    "version": "1.0.0",
+    "version": "1.0.20",
     "orientation": "portrait",
     "scheme": "vikingfitness",
     "userInterfaceStyle": "dark",
@@ -22,7 +22,8 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0B0B0D"
       },
-      "package": "com.drekilabs.vikingfitness"
+      "package": "com.vikingfitness.myapp",
+      "versionCode": 10020
     },
     "web": {
       "bundler": "metro",

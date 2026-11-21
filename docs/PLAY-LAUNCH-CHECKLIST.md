@@ -1,7 +1,7 @@
 # Viking Fitness — Google Play Launch Checklist
 
 Last updated: 2026-07-09
-Package: `com.drekilabs.vikingfitness` · EAS project: `66b7059a-065b-43d8-aa13-6ffac05ed0e3` (owner `dreki_solutions`)
+Package: `com.vikingfitness.myapp` · EAS project: `66b7059a-065b-43d8-aa13-6ffac05ed0e3` (owner `dreki_solutions`)
 
 ---
 
@@ -106,7 +106,7 @@ to Vercel afterwards so `/privacy`, `/terms`, and the new checkout client go liv
 ## Part 3 — RevenueCat (free tier, owner action)
 
 1. Create project **Viking Fitness** at https://app.revenuecat.com.
-2. Add **Google Play Store app**, package `com.drekilabs.vikingfitness`.
+2. Add **Google Play Store app**, package `com.vikingfitness.myapp`.
    - Requires a **Play service-account JSON** (Google Cloud → IAM → service account with Pub/Sub + Play Android Publisher access, invited in Play Console → Users & permissions). RevenueCat's setup wizard walks through it.
 3. **Products**: import `vf_premium_monthly` and `vf_premium_annual` from Play.
 4. **Entitlement**: create `premium` (must match `PREMIUM_ENTITLEMENT` in `lib/purchases.ts`) and attach both products.
