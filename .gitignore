@@ -42,3 +42,5 @@ supabase/.temp/
 *.aab
 *.apk
 *.der
+viking-fitness-*.json
+*service-account*.json
