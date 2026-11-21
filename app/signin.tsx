@@ -21,6 +21,7 @@ import { Card } from '@/components/ui/Card';
 import { colors, fonts, radius } from '@/constants/theme';
 import { supabase } from '@/lib/supabase';
 import { fetchAppProfile } from '@/lib/session';
+import { useTrackerStore } from '@/store/tracker';
 
 export default function SignInScreen() {
   const router = useRouter();
@@ -83,6 +84,7 @@ export default function SignInScreen() {
           setProfile(profileData);
           // Seed the onboarding store so macro/goal data is available across tabs.
           initFromProfile(profileData);
+          await useTrackerStore.getState().hydrateFromSupabase(data.user.id);
           router.replace(profileData.onboardingComplete ? '/(tabs)' : '/onboarding');
         } else {
           // Authenticated but no profile row yet — send them to finish setup.

@@ -4,10 +4,19 @@ import { supabase } from '@/lib/supabase';
 // generate-plan edge function (which also enforces the premium gate); this just
 // invokes it with the user's JWT and reads persisted plans.
 
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL!;
-const ANON_KEY     = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
+const ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
 
 export type PlanType = 'meal' | 'workout';
+
+export interface Glp1AiContext {
+  phase: string;
+  medication: string;
+  doseMg: number;
+  proteinFloorG: number;
+  adaptedCalories: number;
+  trainingNote: string;
+}
 
 export interface MealItem {
   name: string;
@@ -46,13 +55,19 @@ export interface WorkoutPlan {
 export type PlanContent = MealPlan | WorkoutPlan;
 
 export async function generatePlan(
-  type: PlanType
+  type: PlanType,
+  glp1Context?: Glp1AiContext
 ): Promise<{ plan?: PlanContent; error?: string }> {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
+    if (!SUPABASE_URL || !ANON_KEY) {
+      return { error: 'Cloud configuration missing for AI plans.' };
+    }
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
     if (!session) return { error: 'Sign in to generate AI plans.' };
 
-    // Model calls can take several seconds — allow a generous timeout.
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 60000);
     let res: Response;
@@ -60,11 +75,11 @@ export async function generatePlan(
       res = await fetch(`${SUPABASE_URL}/functions/v1/generate-plan`, {
         method: 'POST',
         headers: {
-          'Content-Type':  'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-          'apikey':        ANON_KEY,
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+          apikey: ANON_KEY,
         },
-        body: JSON.stringify({ type }),
+        body: JSON.stringify({ type, glp1Context }),
         signal: controller.signal,
       });
     } finally {
@@ -75,9 +90,10 @@ export async function generatePlan(
     if (!res.ok) return { error: data?.error ?? 'Could not generate a plan.' };
     return { plan: data.plan as PlanContent };
   } catch (err: any) {
-    const message = err?.name === 'AbortError'
-      ? 'Generation timed out. Please try again.'
-      : err?.message ?? 'Could not generate a plan.';
+    const message =
+      err?.name === 'AbortError'
+        ? 'Generation timed out. Please try again.'
+        : err?.message ?? 'Could not generate a plan.';
     return { error: message };
   }
 }

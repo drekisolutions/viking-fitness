@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -16,7 +16,6 @@ import Animated, {
   withRepeat,
   withSequence,
   Easing,
-  runOnJS,
 } from 'react-native-reanimated';
 import { useOnboardingStore } from '@/store/onboarding';
 import { getBMICategory } from '@/constants/calculations';
@@ -72,21 +71,6 @@ function Particle({ x, size, color, opacity, duration, delay }: (typeof PARTICLE
   );
 }
 
-function useCountUp(target: number, duration: number, delay: number) {
-  const value = useSharedValue(0);
-  const displayValue = useRef(0);
-
-  useEffect(() => {
-    if (target <= 0) return;
-    value.value = withDelay(
-      delay,
-      withTiming(target, { duration, easing: Easing.out(Easing.cubic) })
-    );
-  }, [target]);
-
-  return value;
-}
-
 function AnimatedNumber({
   target,
   duration,
@@ -101,23 +85,40 @@ function AnimatedNumber({
   decimals?: number;
 }) {
   const [display, setDisplay] = React.useState('0');
-  const value = useSharedValue(0);
 
   useEffect(() => {
-    if (target <= 0) return;
-    value.value = withDelay(
-      delay,
-      withTiming(target, { duration, easing: Easing.out(Easing.cubic) }, (finished) => {
-        if (finished) runOnJS(setDisplay)(decimals > 0 ? target.toFixed(decimals) : String(Math.round(target)));
-      })
-    );
-    const interval = setInterval(() => {
-      const current = value.value;
-      runOnJS(setDisplay)(decimals > 0 ? current.toFixed(decimals) : String(Math.floor(current)));
-      if (Math.floor(current) >= Math.floor(target)) clearInterval(interval);
-    }, 16);
-    return () => clearInterval(interval);
-  }, [target]);
+    if (target <= 0) {
+      setDisplay('0');
+      return;
+    }
+
+    let rafId = 0;
+    let active = true;
+    const delayTimer = setTimeout(() => {
+      if (!active) return;
+      const startTime = Date.now();
+      const tick = () => {
+        if (!active) return;
+        const elapsed = Date.now() - startTime;
+        const t = Math.min(elapsed / Math.max(duration, 1), 1);
+        const eased = 1 - Math.pow(1 - t, 3);
+        const current = target * eased;
+        setDisplay(
+          decimals > 0 ? current.toFixed(decimals) : String(Math.round(current))
+        );
+        if (t < 1) {
+          rafId = requestAnimationFrame(tick);
+        }
+      };
+      rafId = requestAnimationFrame(tick);
+    }, delay);
+
+    return () => {
+      active = false;
+      clearTimeout(delayTimer);
+      if (rafId) cancelAnimationFrame(rafId);
+    };
+  }, [target, duration, delay, decimals]);
 
   return <Text style={style}>{display}</Text>;
 }

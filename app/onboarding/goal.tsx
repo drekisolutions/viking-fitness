@@ -11,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { ChevronLeft, Check } from 'lucide-react-native';
 import { useOnboardingStore } from '@/store/onboarding';
+import { useTrackerStore } from '@/store/tracker';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { colors, fonts, radius } from '@/constants/theme';
@@ -42,6 +43,9 @@ export default function GoalScreen() {
   const handleContinue = () => {
     setField('goal', localGoal);
     setField('mealPlan', localPlan);
+    if (localPlan === 'glp1') {
+      useTrackerStore.getState().setGlp1Config(undefined, { enabled: true });
+    }
     router.push('/onboarding/results');
   };
 

@@ -36,3 +36,9 @@ yarn-error.*
 
 # supabase cli temp
 supabase/.temp/
+
+# vercel & local store artifacts / signing certs
+.vercel/
+*.aab
+*.apk
+*.der

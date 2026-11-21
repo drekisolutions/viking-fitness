@@ -21,11 +21,11 @@ import { upgradeToPremium, restorePremium } from '@/lib/upgrade';
 import { getNativePrices, type NativePrices } from '@/lib/purchases';
 
 const PREMIUM_FEATURES = [
-  'AI-generated meal plans',
-  'AI-generated workouts',
-  'Progress photos & timeline',
-  'Full analytics & trends',
-  'All Warrior ranks',
+  'AI-generated meal plans (macro & GLP-1 wave tuned)',
+  'AI-generated workouts & Battlefield Pivots',
+  'AI Salvage My Day & voice/text food parser',
+  'GLP-1 Reverse-Diet & Taper Off-Ramp',
+  'Full Muscle Armor & adaptive metabolism analytics',
 ];
 
 const PLAN_ORDER: StripePlan[] = ['monthly', 'annual'];

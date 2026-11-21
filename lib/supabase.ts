@@ -1,8 +1,17 @@
 import { createClient } from '@supabase/supabase-js';
 import { Platform } from 'react-native';
 
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
+const envUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+const envAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+
+if (!envUrl || !envAnonKey) {
+  console.warn(
+    '[Viking Fitness] Missing EXPO_PUBLIC_SUPABASE_URL or EXPO_PUBLIC_SUPABASE_ANON_KEY. Cloud sync and auth will be unavailable.'
+  );
+}
+
+const supabaseUrl = envUrl ?? 'https://placeholder.supabase.co';
+const supabaseAnonKey = envAnonKey ?? 'placeholder-anon-key';
 
 // Safe localStorage access (undefined during SSR/build)
 const safeLocalStorage = {

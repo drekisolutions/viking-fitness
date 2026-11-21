@@ -82,6 +82,8 @@ Deno.serve(async (req: Request) => {
       .eq('id', user.id);
     if (profileError) throw profileError;
 
+    // Deleting auth.users cascades across generated_plans, food_logs, water_logs,
+    // weight_logs, workout_sessions, workout_sets, glp1_profiles, and glp1_shots.
     const { error: deleteError } = await admin.auth.admin.deleteUser(user.id);
     if (deleteError) throw deleteError;
 

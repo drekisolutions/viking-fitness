@@ -27,9 +27,11 @@ locks the `plan` column to the service role so users can't self-grant premium. N
 else is safe to rely on until this is applied:
 
 ```bash
-supabase db push        # applies both migrations in supabase/migrations/
-                        #   20260728000000_profiles_plan_lock.sql   (locks plan)
-                        #   20260728000100_generated_plans.sql      (AI plan storage)
+supabase db push        # applies all migrations in supabase/migrations/
+                        #   20260728000000_profiles_plan_lock.sql     (locks plan)
+                        #   20260728000100_generated_plans.sql        (AI plan storage)
+                        #   20261120000000_core_tracking_and_glp1.sql (food, water, weight, workouts, GLP-1)
+                        #   20261120000100_warband_and_adaptive.sql   (Warbands, boss raids, adaptive TDEE)
 ```
 
 (Or paste those migration files into the Supabase SQL editor and run them. They are written
@@ -44,6 +46,7 @@ supabase functions deploy webhook --no-verify-jwt              # Stripe signs it
 supabase functions deploy delete-account
 supabase functions deploy revenuecat-webhook --no-verify-jwt   # RC calls it with its own auth header
 supabase functions deploy generate-plan                        # AI meal/workout plans (premium)
+supabase functions deploy tactical-adapt                       # AI pivots, salvage meals & NL food parse (premium)
 
 supabase secrets set \
   STRIPE_SECRET_KEY=sk_live_xxx \

@@ -17,6 +17,7 @@ import { StatusBar } from 'expo-status-bar';
 import { ChevronLeft, Eye, EyeOff } from 'lucide-react-native';
 import { useOnboardingStore } from '@/store/onboarding';
 import { useUserStore } from '@/store/user';
+import { useTrackerStore, getTodayDateKey } from '@/store/tracker';
 import { Card } from '@/components/ui/Card';
 import { colors, fonts, radius } from '@/constants/theme';
 import { supabase } from '@/lib/supabase';
@@ -24,14 +25,19 @@ import { STRIPE_PRICES } from '@/lib/stripe';
 import { upgradeToPremium } from '@/lib/upgrade';
 import { getNativePrices } from '@/lib/purchases';
 
-const FREE_FEATURES = ['Meal tracking', 'Macro tracking', 'Basic workouts', 'Warrior ranks I–II'];
+const FREE_FEATURES = [
+  'Workout & set logging',
+  'Food diary & barcode scan',
+  'GLP-1 shot & wave tracker',
+  'Muscle Armor score',
+];
 const PREMIUM_FEATURES = [
   'Everything free',
-  'AI meal plans',
-  'AI workouts',
-  'Progress photos',
-  'Full analytics',
-  'All ranks',
+  'AI meal & workout plans',
+  'AI Battlefield Pivots & Salvage Day',
+  'GLP-1 Reverse-Diet Off-Ramp',
+  'Full Muscle Armor & analytics',
+  'All Warrior ranks',
 ];
 
 export default function AccountScreen() {
@@ -65,7 +71,7 @@ export default function AccountScreen() {
   // writer, so the client can never grant itself premium. Only the Stripe /
   // RevenueCat webhooks (service role) may change it.
   const saveProfileToSupabase = async (userId: string) => {
-    await supabase.from('profiles').upsert({
+    const { error } = await supabase.from('profiles').upsert({
       id: userId,
       name: onboarding.name,
       age: onboarding.age,
@@ -84,9 +90,30 @@ export default function AccountScreen() {
       bmi: onboarding.bmi,
       onboarding_complete: true,
     });
+    if (error) {
+      throw new Error(error.message || 'Could not save your profile.');
+    }
+  };
+
+  const seedInitialTracker = (userId: string) => {
+    const tracker = useTrackerStore.getState();
+    if (tracker.weightLogs.length === 0 && onboarding.weightLbs > 0) {
+      tracker.logWeight(userId, {
+        logDate: getTodayDateKey(),
+        weightLbs: onboarding.weightLbs,
+        notes: 'Starting weight',
+      });
+    }
+    if (onboarding.mealPlan === 'glp1') {
+      tracker.setGlp1Config(userId, {
+        enabled: true,
+        proteinFloorG: Math.max(100, onboarding.protein || 120),
+      });
+    }
   };
 
   const enterApp = (userId: string, userEmail: string, plan: 'free' | 'premium') => {
+    seedInitialTracker(userId);
     setProfile({
       id: userId,
       name: onboarding.name,
@@ -197,9 +224,11 @@ export default function AccountScreen() {
   };
 
   const handleSkip = () => {
-    // Guest mode — local only, no Supabase
+    // Guest mode — persisted locally via AsyncStorage/localStorage
+    const guestId = 'guest-' + Date.now();
+    seedInitialTracker(guestId);
     setProfile({
-      id: 'guest-' + Date.now(),
+      id: guestId,
       name: onboarding.name || 'Warrior',
       email: '',
       age: onboarding.age,

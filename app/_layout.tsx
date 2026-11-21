@@ -62,6 +62,9 @@ export default function RootLayout() {
         <Stack.Screen name="onboarding" />
         <Stack.Screen name="signin" />
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="glp1" />
+        <Stack.Screen name="warband" />
+        <Stack.Screen name="workout-session" />
         <Stack.Screen name="success" />
         <Stack.Screen name="upgrade" />
         <Stack.Screen name="privacy" />

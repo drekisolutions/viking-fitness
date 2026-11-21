@@ -3,6 +3,10 @@ import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } fr
 import { useRouter } from 'expo-router';
 import { Sparkles, Lock, RefreshCw } from 'lucide-react-native';
 import { useUserStore } from '@/store/user';
+import { useOnboardingStore } from '@/store/onboarding';
+import { useTrackerStore } from '@/store/tracker';
+import { calculateTDEE } from '@/constants/calculations';
+import { getShotWavePhase } from '@/constants/glp1';
 import { Card } from '@/components/ui/Card';
 import { colors, fonts, radius } from '@/constants/theme';
 import {
@@ -12,18 +16,19 @@ import {
   type MealPlan,
   type WorkoutPlan,
   type PlanContent,
+  type Glp1AiContext,
 } from '@/lib/ai';
 
 const COPY: Record<PlanType, { title: string; blurb: string; cta: string; verb: string }> = {
   meal: {
     title: 'AI MEAL PLAN',
-    blurb: 'A full day of eating tuned to your calorie and macro targets.',
+    blurb: 'A full day of eating tuned to your macro targets & GLP-1 Shot Wave.',
     cta: 'Generate meal plan',
     verb: 'Forging your rations',
   },
   workout: {
     title: 'AI WORKOUT',
-    blurb: 'A session built for your goal and experience level.',
+    blurb: 'A strength session adapted for your goal & GLP-1 Muscle Armor phase.',
     cta: 'Generate workout',
     verb: 'Forging your session',
   },
@@ -32,6 +37,9 @@ const COPY: Record<PlanType, { title: string; blurb: string; cta: string; verb: 
 export function AIPlanCard({ type }: { type: PlanType }) {
   const router = useRouter();
   const isPremium = useUserStore((s) => s.profile?.plan === 'premium');
+  const onboarding = useOnboardingStore();
+  const glp1Profile = useTrackerStore((s) => s.glp1Profile);
+  const glp1Shots = useTrackerStore((s) => s.glp1Shots);
   const copy = COPY[type];
 
   const [plan, setPlan] = useState<PlanContent | null>(null);
@@ -47,10 +55,37 @@ export function AIPlanCard({ type }: { type: PlanType }) {
     return () => { active = false; };
   }, [isPremium, type]);
 
+  const buildGlp1Context = (): Glp1AiContext | undefined => {
+    if (!glp1Profile.enabled) return undefined;
+    const heightIn = onboarding.heightFt * 12 + onboarding.heightIn;
+    const tdee = calculateTDEE(
+      onboarding.weightLbs || 180,
+      heightIn || 70,
+      onboarding.age || 30,
+      onboarding.sex || 'male',
+      onboarding.activityLevel || 1.375
+    );
+    const wave = getShotWavePhase(
+      glp1Profile,
+      glp1Shots,
+      onboarding.calories,
+      onboarding.protein,
+      tdee
+    );
+    return {
+      phase: wave.label,
+      medication: glp1Profile.medication,
+      doseMg: glp1Profile.currentDoseMg,
+      proteinFloorG: wave.proteinFloorG,
+      adaptedCalories: wave.adaptedCalories,
+      trainingNote: wave.trainingNote,
+    };
+  };
+
   const handleGenerate = async () => {
     setLoading(true);
     try {
-      const result = await generatePlan(type);
+      const result = await generatePlan(type, buildGlp1Context());
       if (result.plan) setPlan(result.plan);
       else Alert.alert('Generation failed', result.error ?? 'Please try again.');
     } catch {

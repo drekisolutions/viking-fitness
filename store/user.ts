@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { zustandStorage } from '@/lib/storage';
 
 export interface UserProfile {
   id: string;
@@ -23,29 +25,46 @@ export interface UserProfile {
 interface UserState {
   profile: UserProfile | null;
   isLoading: boolean;
+  _hasHydrated: boolean;
+  setHasHydrated: (hydrated: boolean) => void;
   setProfile: (profile: UserProfile) => void;
   updateProfile: (updates: Partial<UserProfile>) => void;
   clearProfile: () => void;
   setOnboardingComplete: (complete: boolean) => void;
 }
 
-export const useUserStore = create<UserState>((set) => ({
-  profile: null,
-  isLoading: false,
+export const useUserStore = create<UserState>()(
+  persist(
+    (set) => ({
+      profile: null,
+      isLoading: false,
+      _hasHydrated: false,
 
-  setProfile: (profile) => set({ profile }),
+      setHasHydrated: (hydrated) => set({ _hasHydrated: hydrated }),
 
-  updateProfile: (updates) =>
-    set((state) => ({
-      profile: state.profile ? { ...state.profile, ...updates } : null,
-    })),
+      setProfile: (profile) => set({ profile }),
 
-  clearProfile: () => set({ profile: null }),
+      updateProfile: (updates) =>
+        set((state) => ({
+          profile: state.profile ? { ...state.profile, ...updates } : null,
+        })),
 
-  setOnboardingComplete: (complete) =>
-    set((state) => ({
-      profile: state.profile
-        ? { ...state.profile, onboardingComplete: complete }
-        : null,
-    })),
-}));
+      clearProfile: () => set({ profile: null }),
+
+      setOnboardingComplete: (complete) =>
+        set((state) => ({
+          profile: state.profile
+            ? { ...state.profile, onboardingComplete: complete }
+            : null,
+        })),
+    }),
+    {
+      name: 'viking-user-store',
+      storage: createJSONStorage(() => zustandStorage),
+      partialize: (state) => ({ profile: state.profile }),
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
+    }
+  )
+);

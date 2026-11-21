@@ -2,20 +2,20 @@
 // Runs on Deno; deploy with: supabase functions deploy generate-plan
 // Required secrets (set via: supabase secrets set KEY=value):
 //   ANTHROPIC_API_KEY          (Claude API key)
-//   ANTHROPIC_MODEL            (optional; defaults to claude-opus-5 — set to
-//                               claude-haiku-4-5 for a much cheaper/faster option)
+//   ANTHROPIC_MODEL            (optional; defaults to claude-haiku-4-5)
 //   SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY (auto-injected)
 //
-// Generates a personalized meal or workout plan from the user's profile via
-// Claude and persists it to generated_plans. Access is gated to premium users
-// server-side — the client cannot bypass it. The Claude API key stays here and
-// is never exposed to the app bundle.
+// Generates a personalized meal or workout plan from the user's profile (plus
+// optional live GLP-1 Shot Wave context) via Claude and persists it to
+// generated_plans. Access is gated to premium users server-side and rate-limited
+// to 5 generations per 24h per user.
 
 import Anthropic from 'npm:@anthropic-ai/sdk';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2?target=deno';
 import { corsHeaders } from '../_shared/cors.ts';
 
-const MODEL = Deno.env.get('ANTHROPIC_MODEL') ?? 'claude-opus-5';
+const MODEL = Deno.env.get('ANTHROPIC_MODEL') ?? 'claude-haiku-4-5';
+const DAILY_LIMIT = 5;
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -23,10 +23,8 @@ const json = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
 
-// JSON schemas for structured output (no min/max/length — unsupported by the
-// structured-outputs validator; every object sets additionalProperties: false).
 const MEAL_SCHEMA = {
-  type: 'object',
+  type: 'object' as const,
   additionalProperties: false,
   properties: {
     title: { type: 'string' },
@@ -54,7 +52,7 @@ const MEAL_SCHEMA = {
 };
 
 const WORKOUT_SCHEMA = {
-  type: 'object',
+  type: 'object' as const,
   additionalProperties: false,
   properties: {
     title: { type: 'string' },
@@ -82,35 +80,70 @@ const WORKOUT_SCHEMA = {
 };
 
 const SYSTEM = `You are a Norse-themed strength & nutrition coach for the Viking Fitness app.
-Generate a single, practical, safe, personalized plan as JSON that matches the provided schema exactly.
+Generate a single, practical, safe, personalized plan by calling the provided tool with exact JSON.
 Base every number on the user's stats and targets. Keep language encouraging with light Viking flavor,
-but never make medical claims or recommend anything unsafe. Respect the user's calorie and macro targets
-for meal plans, and their goal and experience for workouts.`;
+but never make medical claims, never prescribe medication doses, and never recommend anything unsafe.
+Respect the user's calorie and macro targets (and any active GLP-1 Shot Wave adjustments) for meal plans,
+and their goal, recovery state, and muscle-preservation priorities for workouts.`;
 
-function buildPrompt(type: 'meal' | 'workout', p: Record<string, any>): string {
+interface Glp1Context {
+  phase?: string;
+  medication?: string;
+  doseMg?: number;
+  proteinFloorG?: number;
+  adaptedCalories?: number;
+  trainingNote?: string;
+}
+
+function buildPrompt(
+  type: 'meal' | 'workout',
+  p: Record<string, any>,
+  glp1Context?: Glp1Context
+): string {
+  const effectiveCalories = glp1Context?.adaptedCalories ?? p.calories ?? '?';
+  const effectiveProtein = glp1Context?.proteinFloorG ?? p.protein ?? '?';
+
   const stats = [
     `Goal: ${p.goal ?? 'build'}`,
     `Sex: ${p.sex ?? 'unspecified'}`,
     `Age: ${p.age ?? '?'}`,
     `Weight: ${p.weight_lbs ?? '?'} lbs`,
     `Activity: ${p.activity_label ?? 'moderate'}`,
-    `Daily calorie target: ${p.calories ?? '?'} kcal`,
-    `Protein/Carbs/Fat targets: ${p.protein ?? '?'}g / ${p.carbs ?? '?'}g / ${p.fat ?? '?'}g`,
+    `Daily calorie target: ${effectiveCalories} kcal`,
+    `Protein/Carbs/Fat targets: ${effectiveProtein}g / ${p.carbs ?? '?'}g / ${p.fat ?? '?'}g`,
     `Meal-plan style: ${p.meal_plan ?? 'balanced'}`,
-  ].join('\n');
+  ];
+
+  if (glp1Context?.phase) {
+    stats.push(
+      `GLP-1 Muscle Armor active: medication=${glp1Context.medication ?? 'GLP-1'} (${glp1Context.doseMg ?? '?'} mg), shot-wave phase=${glp1Context.phase}, protein shield floor=${effectiveProtein}g`
+    );
+    if (glp1Context.trainingNote) {
+      stats.push(`GLP-1 training directive: ${glp1Context.trainingNote}`);
+    }
+  }
+
+  const statBlock = stats.join('\n');
 
   if (type === 'meal') {
+    const glp1Guidance = glp1Context?.phase
+      ? ' Prioritize small, easy-to-digest, low-grease, protein-first meals (4–5 micro-meals if appetite is suppressed) that strictly protect the protein shield floor.'
+      : '';
     return `Create ONE full day of eating that hits the user's calorie and macro targets as closely as possible.
-Use 3–5 meals with realistic whole foods. Give 2–4 short practical tips.
+Use 3–5 meals with realistic whole foods.${glp1Guidance} Give 2–4 short practical tips.
 
 User:
-${stats}`;
+${statBlock}`;
   }
-  return `Create ONE workout session appropriate for the user's goal and activity level.
+
+  const glp1LiftGuidance = glp1Context?.phase
+    ? ' Focus on compound resistance movements to preserve lean muscle mass; if in peak suppression phase, keep working weight heavy on 2–3 core sets and skip unnecessary junk volume.'
+    : '';
+  return `Create ONE workout session appropriate for the user's goal and activity level.${glp1LiftGuidance}
 Include a short warmup, 4–7 main exercises with sets/reps and brief form notes, a cooldown, and 2–4 tips.
 
 User:
-${stats}`;
+${statBlock}`;
 }
 
 Deno.serve(async (req: Request) => {
@@ -133,7 +166,7 @@ Deno.serve(async (req: Request) => {
     const { data: { user }, error: authError } = await anon.auth.getUser(token);
     if (authError || !user) return json({ error: 'Invalid or expired token' }, 401);
 
-    const { type } = await req.json();
+    const { type, glp1Context } = await req.json();
     if (type !== 'meal' && type !== 'workout') {
       return json({ error: 'Invalid plan type' }, 400);
     }
@@ -153,32 +186,47 @@ Deno.serve(async (req: Request) => {
       return json({ error: 'AI plans are a Premium feature.' }, 403);
     }
 
-    // Generate with Claude. Structured output guarantees schema-valid JSON;
-    // thinking disabled at low effort keeps it fast and cheap for this bounded task.
+    // Enforce per-user 24-hour generation cap to bound Anthropic API spend.
+    const sinceIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { count, error: countError } = await admin
+      .from('generated_plans')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .gte('created_at', sinceIso);
+
+    if (!countError && (count ?? 0) >= DAILY_LIMIT) {
+      return json(
+        { error: `Daily AI generation limit reached (${DAILY_LIMIT}/day). Try again tomorrow.` },
+        429
+      );
+    }
+
+    const toolName = type === 'meal' ? 'save_meal_plan' : 'save_workout_plan';
     const anthropic = new Anthropic({ apiKey });
     const response: any = await anthropic.messages.create({
       model: MODEL,
-      max_tokens: 6000,
-      thinking: { type: 'disabled' },
-      output_config: {
-        effort: 'low',
-        format: { type: 'json_schema', schema: type === 'meal' ? MEAL_SCHEMA : WORKOUT_SCHEMA },
-      },
+      max_tokens: 2048,
       system: SYSTEM,
-      messages: [{ role: 'user', content: buildPrompt(type, profile) }],
-    } as any);
+      tools: [
+        {
+          name: toolName,
+          description: `Persist the generated ${type} plan for the user.`,
+          input_schema: type === 'meal' ? MEAL_SCHEMA : WORKOUT_SCHEMA,
+        },
+      ],
+      tool_choice: { type: 'tool', name: toolName },
+      messages: [{ role: 'user', content: buildPrompt(type, profile, glp1Context) }],
+    });
 
     if (response.stop_reason === 'refusal') {
       return json({ error: 'Could not generate that plan. Please try again.' }, 422);
     }
 
-    const textBlock = (response.content ?? []).find((b: any) => b.type === 'text');
-    if (!textBlock?.text) return json({ error: 'Empty response from the model.' }, 502);
-
-    let plan: unknown;
-    try {
-      plan = JSON.parse(textBlock.text);
-    } catch {
+    const toolBlock = (response.content ?? []).find(
+      (b: any) => b.type === 'tool_use' && b.name === toolName
+    );
+    const plan = toolBlock?.input;
+    if (!plan || typeof plan !== 'object') {
       return json({ error: 'Model returned malformed data. Please try again.' }, 502);
     }
 

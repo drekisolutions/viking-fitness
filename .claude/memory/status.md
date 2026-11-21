@@ -1,6 +1,21 @@
 # Viking Fitness — Build Status
 
-Last updated: 2026-07-29 (branch claude/great-gauss-04189e — GitHub step completed, PR #1 merged to master)
+Last updated: 2026-11-20 (branch `master` — Phase 0 + Phase 1 + GLP-1 Muscle Armor v1 + Phase 2 Competitive Wedges shipped)
+
+## ✅ Phase 2 Competitive Wedges (2026-11-20)
+- **Iron ↔ Rations + Adaptive TDEE (`constants/adaptive.ts`, Progress/Home/Nutrition/Training):** Zero-API-cost 21-day EMA-based metabolic estimator (`calculateAdaptiveTDEE` with ±150 kcal weekly step check-ins) + closed-loop training/nutrition coupling (`getIronRationsCoupling`: heavy-lift carb refuel bumps suppressed on GLP-1 Peak days, plus 2/3-day Low-Rations recovery guard).
+- **Battlefield Tactical Adaptations (`constants/tacticalFallback.ts`, `lib/tactical.ts`, `supabase/functions/tactical-adapt/index.ts`):** 1-tap `Pivot Today's Battle` (`25 Min Rush`, `Hotel / DB Only`, `Low Energy`, `Back-Safe`, `Busy Gym`), `Salvage My Day` 3-option macro rescue, and `Text / Mic` multi-food natural-language parser (instant offline tactical engines + Premium Claude enhancement).
+- **Anti-Fragile Warband Raids (`constants/warband.ts`, `app/warband.tsx`, `supabase/migrations/20261120000100_warband_and_adaptive.sql`):** Weekly rotating Norse boss raids, bodyweight-normalized squad damage, 6-char invite-code co-op Warbands (2–5 friends), Shield Wall Passes (`1–3` stored) so illness/travel never breaks consistency, and bodyweight-ratio Strength Standards (`Thrall → Odinborn`).
+- **Pending Owner Deploy:** Run `supabase db push` (`20261120000000_core_tracking_and_glp1.sql` + `20261120000100_warband_and_adaptive.sql`) and deploy `generate-plan` + `tactical-adapt`.
+
+## ✅ Phase 0 + Phase 1 + GLP-1 Muscle Armor v1 (2026-11-20)
+- **Git & Hygiene:** Fast-forwarded `master` (`359d0b2`) and merged `claude/great-gauss-04189e` (`e278be4`) cleanly; ignored local `.vercel`, `*.aab`, `*.apk`, `*.der` files.
+- **Assets & Dependencies:** Re-exported `icon.png`, `adaptive-icon.png`, `splash.png`, and `favicon.png` as true PNGs (`89 50 4E 47`) with real RGBA alpha channels on adaptive/splash/favicon. Added `@react-native-async-storage/async-storage@2.2.0` and aligned `expo-secure-store@~15.0.8`.
+- **Hardening Fixes:** Added `[]` dep array in `useFrameworkReady.ts`; guarded missing env vars in `lib/supabase.ts`; checked `profiles.upsert` errors in `account.tsx`; added retry polling + fallback button in `success.tsx`; updated `generate-plan` to `claude-haiku-4-5`, tool-use JSON output, 5/day per-user rate limit, and live GLP-1 context; updated `privacy.tsx` for Anthropic/Open Food Facts + GLP-1 disclaimer; aligned paywall copy to shipped features.
+- **Real Core Tracking Loop:** Added persisted Zustand stores (`store/user.ts`, `store/onboarding.ts`, `store/tracker.ts`) + Supabase schema (`supabase/migrations/20261120000000_core_tracking_and_glp1.sql`) with RLS. Replaced all mock data across Home, Training (`app/workout-session.tsx` with stopwatch, rest timer, PR detection), Nutrition (real food diary, Quick Shield curated list, Open Food Facts search & UPC barcode lookup, scaled Meal Plan logging), Progress (EMA trend weight, real 1RM/relative strength PRs, Muscle Armor score, weekly campaign), and Profile (monogram crest, target/plan editors).
+- **GLP-1 Muscle Armor (`app/glp1.tsx`, `constants/glp1.ts`):** Bateman 1-compartment multi-dose pharmacokinetic wave chart, least-recently-used injection site rotation, 7-day Peak/Cruise/Rebound calorie + Protein Shield + workout volume cycling, Muscle Armor Index (0–100), and Premium Reverse-Diet & Taper Off-Ramp.
+- **Tests & CI:** Added `tests/calculations.test.ts` and `tests/glp1.test.ts` (run with `node --test tests/*.test.ts` in CI).
+- **Pending Owner Deploy:** Run `supabase db push` (applies `20261120000000_core_tracking_and_glp1.sql` + prior migrations) and redeploy `generate-plan` + `delete-account`, then deploy web/EAS.
 
 ## ✅ GitHub step complete (2026-07-29, this session)
 - Owner ran `gh auth login` (account drekisolutions). Repo already existed from a prior
