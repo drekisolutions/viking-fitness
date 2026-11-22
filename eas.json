@@ -24,6 +24,12 @@
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "android": {
+        "serviceAccountKeyPath": "./viking-fitness-515410-0537c2794f45.json",
+        "track": "internal",
+        "releaseStatus": "draft"
+      }
+    }
   }
 }

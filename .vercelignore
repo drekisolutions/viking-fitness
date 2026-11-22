@@ -1,0 +1,13 @@
+.env
+.env.*
+.git
+.claude
+supabase
+*.aab
+*.apk
+*.der
+*.pem
+*.jks
+*.keystore
+viking-fitness-*.json
+*service-account*.json

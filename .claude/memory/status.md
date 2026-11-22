@@ -1,6 +1,14 @@
 # Viking Fitness — Build Status
 
-Last updated: 2026-11-20 (branch `master` — Phase 0 + Phase 1 + GLP-1 Muscle Armor v1 + Phase 2 Competitive Wedges shipped)
+Last updated: 2026-11-22 (branch `master` — Live backend, web deploy, webhooks, EAS builds & Play automation ready)
+
+## ✅ Launch Infrastructure & Store Wiring (2026-11-22)
+- **Supabase (`dcjumiwseyisfwnmario`):** https://dcjumiwseyisfwnmario.supabase.co — All 5 migrations applied (including `20261120000200_fix_warband_rls.sql`), 12 tables verified `200 OK`, all 6 Edge Functions `ACTIVE`, and all 7 secrets set (`ANTHROPIC_API_KEY`, `APP_BASE_URL`, `REVENUECAT_WEBHOOK_AUTH`, `STRIPE_MONTHLY_PRICE_ID`, `STRIPE_ANNUAL_PRICE_ID`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`).
+- **Vercel Web Production:** https://viking-fitness-sepia.vercel.app (`/`, `/privacy`, `/glp1`, `/warband` verified `200 OK`). `.vercelignore` excludes local keys, certs, and mobile binaries.
+- **Stripe Live Webhook:** Destination `we_1Ue3N6PoN0MD3e7C9h3F2nOY` (`Active`, 6 subscription/invoice events) wired to `/functions/v1/webhook`.
+- **RevenueCat (`13dc37e5` / `appfccea8e249`):** Google Play app (`com.vikingfitness.myapp`), `premium` entitlement (`entla5fd6fca25`), `default` offering (`ofrng09cac5d7c4`), webhook (`Active`, `200 OK` test), GCP service account (`viking-fitness-515410` + RTDN topic `projects/viking-fitness-515410/topics/Play-Store-Notifications`).
+- **EAS Builds & Automated Play Submit (`eas.json`):** Internal `.apk` `463af193-ca31-479a-92a0-6311a2af21b2` finished; Production `.aab` `v1.0.20` (`10020`, `com.vikingfitness.myapp`) build `c34bcf70-2ea4-474a-b692-5d7544d2b6f7` finished (`viking-fitness-v1_0_20.aab`). `eas submit` configured (`viking-fitness-515410-0537c2794f45.json`, `track: internal`, `releaseStatus: draft`).
+- **Pending Play Upload Key Activation:** Upload Key Reset to `97:97:20:BD:EE:91:51:84:E7:0B:51:EB:3F:8A:D2:54:F4:FD:52:C4` activates **Nov 24, 2026 at 7:03 PM UTC (2:03 PM EST)**; afterwards run `eas submit`, create Play subscriptions (`vf_premium_monthly` / `vf_premium_annual`), and import into RevenueCat.
 
 ## ✅ Phase 2 Competitive Wedges (2026-11-20)
 - **Iron ↔ Rations + Adaptive TDEE (`constants/adaptive.ts`, Progress/Home/Nutrition/Training):** Zero-API-cost 21-day EMA-based metabolic estimator (`calculateAdaptiveTDEE` with ±150 kcal weekly step check-ins) + closed-loop training/nutrition coupling (`getIronRationsCoupling`: heavy-lift carb refuel bumps suppressed on GLP-1 Peak days, plus 2/3-day Low-Rations recovery guard).
