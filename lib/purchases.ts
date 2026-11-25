@@ -15,6 +15,7 @@ const REVENUECAT_API_KEY = Platform.select({
 });
 
 export const PREMIUM_ENTITLEMENT = 'premium';
+export const PRO_ENTITLEMENT = 'pro';
 
 const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 
@@ -59,10 +60,15 @@ export async function configurePurchases(appUserID: string): Promise<boolean> {
   }
 }
 
-export type NativePrices = { monthly?: string; annual?: string };
+export type NativePrices = {
+  monthly?: string;
+  annual?: string;
+  pro_monthly?: string;
+  pro_annual?: string;
+};
 
 /**
- * Localized store price strings (e.g. "$9.99", "£8.99") for the current
+ * Localized store price strings (e.g. "$14.99", "£12.99") for the current
  * offering, so native paywalls show the real Play/Apple charge rather than a
  * hardcoded USD figure. Returns {} when billing is unavailable or on error.
  */
@@ -73,9 +79,16 @@ export async function getNativePrices(): Promise<NativePrices> {
     const offerings = await Purchases.getOfferings();
     const offering = offerings.current;
     if (!offering) return {};
+    const proOffering = offerings.all?.['pro'];
     return {
       monthly: offering.monthly?.product?.priceString,
       annual: offering.annual?.product?.priceString,
+      pro_monthly:
+        proOffering?.monthly?.product?.priceString ??
+        offering.availablePackages?.find((p) => p.identifier === '$rc_pro_monthly')?.product?.priceString,
+      pro_annual:
+        proOffering?.annual?.product?.priceString ??
+        offering.availablePackages?.find((p) => p.identifier === '$rc_pro_annual')?.product?.priceString,
     };
   } catch {
     return {};
@@ -84,16 +97,18 @@ export async function getNativePrices(): Promise<NativePrices> {
 
 export type PurchaseResult = {
   success: boolean;
+  plan?: 'premium' | 'pro';
   userCancelled?: boolean;
   error?: string;
 };
 
 /**
- * Purchase the premium subscription through the store.
- * plan maps to the default RevenueCat packages: $rc_monthly / $rc_annual.
+ * Purchase a subscription through the store.
+ * plan maps to RevenueCat packages: $rc_monthly / $rc_annual (default offering)
+ * or pro offering / $rc_pro_monthly / $rc_pro_annual.
  */
 export async function purchasePremium(
-  plan: 'monthly' | 'annual'
+  plan: 'monthly' | 'annual' | 'pro_monthly' | 'pro_annual'
 ): Promise<PurchaseResult> {
   const Purchases = getPurchases();
   if (!Purchases) {
@@ -106,26 +121,38 @@ export async function purchasePremium(
   try {
     const offerings = await Purchases.getOfferings();
     const offering = offerings.current;
-    if (!offering) {
-      return { success: false, error: 'No subscription offering is configured.' };
+    const proOffering = offerings.all?.['pro'];
+
+    let pkg = null;
+    if (plan === 'pro_monthly') {
+      pkg =
+        proOffering?.monthly ??
+        offering?.availablePackages?.find((p) => p.identifier === '$rc_pro_monthly') ??
+        null;
+    } else if (plan === 'pro_annual') {
+      pkg =
+        proOffering?.annual ??
+        offering?.availablePackages?.find((p) => p.identifier === '$rc_pro_annual') ??
+        null;
+    } else if (plan === 'annual') {
+      pkg = offering?.annual ?? null;
+    } else {
+      pkg = offering?.monthly ?? null;
     }
 
-    // Fail closed: only ever purchase the package matching the requested term.
-    // Never fall back to availablePackages[0], which could charge for the wrong
-    // plan (e.g. a "monthly" tap buying the annual package).
-    const pkg = plan === 'annual' ? offering.annual : offering.monthly;
     if (!pkg) {
       return {
         success: false,
-        error: `The ${plan} plan is not available right now. Please try again later.`,
+        error: `The ${plan.replace('_', ' ')} plan is not available right now. Please try again later.`,
       };
     }
 
     const { customerInfo } = await Purchases.purchasePackage(pkg);
-    const active = customerInfo.entitlements.active[PREMIUM_ENTITLEMENT] != null;
-    return active
-      ? { success: true }
-      : { success: false, error: 'Purchase completed but entitlement is not active yet.' };
+    const hasPro = customerInfo.entitlements.active[PRO_ENTITLEMENT] != null;
+    const hasPrem = customerInfo.entitlements.active[PREMIUM_ENTITLEMENT] != null;
+    if (hasPro) return { success: true, plan: 'pro' };
+    if (hasPrem) return { success: true, plan: 'premium' };
+    return { success: false, error: 'Purchase completed but entitlement is not active yet.' };
   } catch (err: any) {
     if (err?.userCancelled) {
       return { success: false, userCancelled: true };
@@ -145,10 +172,11 @@ export async function restorePurchases(): Promise<PurchaseResult> {
   }
   try {
     const customerInfo = await Purchases.restorePurchases();
-    const active = customerInfo.entitlements.active[PREMIUM_ENTITLEMENT] != null;
-    return active
-      ? { success: true }
-      : { success: false, error: 'No active premium subscription found.' };
+    const hasPro = customerInfo.entitlements.active[PRO_ENTITLEMENT] != null;
+    const hasPrem = customerInfo.entitlements.active[PREMIUM_ENTITLEMENT] != null;
+    if (hasPro) return { success: true, plan: 'pro' };
+    if (hasPrem) return { success: true, plan: 'premium' };
+    return { success: false, error: 'No active subscription found.' };
   } catch (err: any) {
     return { success: false, error: err?.message ?? 'Restore failed.' };
   }

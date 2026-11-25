@@ -135,7 +135,7 @@ Deno.serve(async (req: Request) => {
       .single();
 
     if (!profile) return json({ error: 'Profile not found' }, 404);
-    if (profile.plan !== 'premium') {
+    if (profile.plan !== 'premium' && profile.plan !== 'pro') {
       return json({ error: 'AI tactical adaptation is a Premium feature.' }, 403);
     }
 

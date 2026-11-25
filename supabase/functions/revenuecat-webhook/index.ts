@@ -78,9 +78,19 @@ Deno.serve(async (req: Request) => {
     // Ignore RevenueCat anonymous ids — purchases are configured with the
     // Supabase user id as app_user_id (see lib/purchases.ts).
     if (userId && !userId.startsWith('$RCAnonymousID:')) {
-      if (PREMIUM_EVENTS.has(event.type)) await setPlan(supabase, userId, 'premium');
-      else if (FREE_EVENTS.has(event.type)) await setPlan(supabase, userId, 'free');
-      else console.log('Unhandled RevenueCat event type:', event.type);
+      const entitlements: string[] = Array.isArray(event?.entitlement_ids)
+        ? event.entitlement_ids
+        : [];
+      const isProEvent =
+        entitlements.includes('pro') ||
+        (typeof event?.product_id === 'string' && event.product_id.includes('pro'));
+      if (PREMIUM_EVENTS.has(event.type)) {
+        await setPlan(supabase, userId, isProEvent ? 'pro' : 'premium');
+      } else if (FREE_EVENTS.has(event.type)) {
+        await setPlan(supabase, userId, 'free');
+      } else {
+        console.log('Unhandled RevenueCat event type:', event.type);
+      }
     }
 
     return json({ received: true });

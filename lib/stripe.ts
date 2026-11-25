@@ -12,16 +12,20 @@ import { supabase } from '@/lib/supabase';
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL!;
 const ANON_KEY     = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
 
-export type StripePlan = 'monthly' | 'annual';
+export type StripePlan = 'monthly' | 'annual' | 'pro_monthly' | 'pro_annual';
 
 // Display metadata only — actual Stripe price IDs live server-side.
 export const STRIPE_PRICES: Record<StripePlan, {
   amount: number;
   label: string;
   savings: string | null;
+  tier: 'premium' | 'pro';
+  term: 'monthly' | 'annual';
 }> = {
-  monthly: { amount: 14.99, label: '$14.99/mo', savings: null },
-  annual:  { amount: 89,    label: '$89/yr',    savings: 'Save 50%' },
+  monthly:     { amount: 14.99, label: '$14.99/mo', savings: null,       tier: 'premium', term: 'monthly' },
+  annual:      { amount: 89,    label: '$89/yr',    savings: 'Save 50%', tier: 'premium', term: 'annual' },
+  pro_monthly: { amount: 24.99, label: '$24.99/mo', savings: null,       tier: 'pro',     term: 'monthly' },
+  pro_annual:  { amount: 149,   label: '$149/yr',   savings: 'Save 50%', tier: 'pro',     term: 'annual' },
 };
 
 export async function startCheckout(

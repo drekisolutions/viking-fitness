@@ -53,7 +53,7 @@ export default function TrainingScreen() {
     startActiveWorkout,
   } = useTrackerStore();
 
-  const isPremium = profile?.plan === 'premium';
+  const isPremium = profile?.plan === 'premium' || profile?.plan === 'pro';
   const workouts = useMemo(() => getWorkoutsForSplit(selectedSplit), [selectedSplit]);
   const [selectedWorkoutId, setSelectedWorkoutId] = useState<string>(workouts[0]?.id ?? '');
   const [lowRationsTrim, setLowRationsTrim] = useState(false);

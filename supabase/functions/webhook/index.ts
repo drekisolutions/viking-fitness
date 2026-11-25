@@ -49,7 +49,8 @@ Deno.serve(async (req: Request) => {
     switch (event.type) {
       case 'checkout.session.completed': {
         const userId = obj.metadata?.userId;
-        if (userId) await setPlan(supabase, userId, 'premium');
+        const targetPlan = obj.metadata?.targetPlan === 'pro' ? 'pro' : 'premium';
+        if (userId) await setPlan(supabase, userId, targetPlan);
         break;
       }
       case 'customer.subscription.deleted':
@@ -63,7 +64,11 @@ Deno.serve(async (req: Request) => {
         const userId =
           obj.metadata?.userId ??
           obj.subscription_details?.metadata?.userId;
-        if (userId) await setPlan(supabase, userId, 'premium');
+        const metaPlan =
+          obj.metadata?.targetPlan ??
+          obj.subscription_details?.metadata?.targetPlan;
+        const targetPlan = metaPlan === 'pro' ? 'pro' : 'premium';
+        if (userId) await setPlan(supabase, userId, targetPlan);
         break;
       }
       case 'invoice.payment_failed':

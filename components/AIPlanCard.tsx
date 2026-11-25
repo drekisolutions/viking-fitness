@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Sparkles, Lock, RefreshCw } from 'lucide-react-native';
-import { useUserStore } from '@/store/user';
+import { useUserStore, hasPremiumAccess } from '@/store/user';
 import { useOnboardingStore } from '@/store/onboarding';
 import { useTrackerStore } from '@/store/tracker';
 import { calculateTDEE } from '@/constants/calculations';
@@ -36,7 +36,7 @@ const COPY: Record<PlanType, { title: string; blurb: string; cta: string; verb: 
 
 export function AIPlanCard({ type }: { type: PlanType }) {
   const router = useRouter();
-  const isPremium = useUserStore((s) => s.profile?.plan === 'premium');
+  const isPremium = useUserStore((s) => hasPremiumAccess(s.profile?.plan));
   const onboarding = useOnboardingStore();
   const glp1Profile = useTrackerStore((s) => s.glp1Profile);
   const glp1Shots = useTrackerStore((s) => s.glp1Shots);

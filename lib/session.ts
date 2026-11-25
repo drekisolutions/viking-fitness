@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import type { UserProfile } from '@/store/user';
+import type { UserProfile, PlanTier } from '@/store/user';
 
 /**
  * Fetch the signed-in user's `profiles` row and map it to the app's
@@ -38,7 +38,7 @@ export async function fetchAppProfile(
     carbs: dbProfile.carbs || 0,
     fat: dbProfile.fat || 0,
     bmi: dbProfile.bmi || 0,
-    plan: (dbProfile.plan as 'free' | 'premium') || 'free',
+    plan: (dbProfile.plan as PlanTier) || 'free',
     onboardingComplete: dbProfile.onboarding_complete ?? false,
   };
 }

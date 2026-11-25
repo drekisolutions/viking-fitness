@@ -89,7 +89,8 @@ export default function ProfileScreen() {
     .map((p) => p[0].toUpperCase())
     .join('') || 'VF';
 
-  const isPremium = profile?.plan === 'premium';
+  const isPremium = profile?.plan === 'premium' || profile?.plan === 'pro';
+  const isPro = profile?.plan === 'pro';
 
   // Real summary stats
   const daysActive = useMemo(() => {
@@ -312,10 +313,31 @@ export default function ProfileScreen() {
           ))}
         </View>
 
-        {isPremium ? (
+        {isPro ? (
           <View style={styles.premiumBadge}>
             <Crown size={16} color={colors.gold} />
-            <Text style={styles.premiumBadgeText}>PREMIUM WARRIOR</Text>
+            <Text style={styles.premiumBadgeText}>VIKING PRO WARRIOR</Text>
+          </View>
+        ) : isPremium ? (
+          <View style={{ gap: 10 }}>
+            <View style={styles.premiumBadge}>
+              <Crown size={16} color={colors.gold} />
+              <Text style={styles.premiumBadgeText}>PREMIUM WARRIOR</Text>
+            </View>
+            <TouchableOpacity activeOpacity={0.85} onPress={() => router.push('/upgrade?tier=pro' as any)}>
+              <Card glowColor="gold" style={styles.upgradeCard}>
+                <View style={styles.upgradeIcon}>
+                  <Crown size={20} color={colors.gold} />
+                </View>
+                <View style={styles.upgradeInfo}>
+                  <Text style={styles.upgradeTitle}>Upgrade to Viking Pro</Text>
+                  <Text style={styles.upgradeSub}>
+                    24/7 Mimir AI Coach & Plate Photo Macro Scan ($24.99/mo · $149/yr)
+                  </Text>
+                </View>
+                <ChevronRight size={18} color={colors.gold} />
+              </Card>
+            </TouchableOpacity>
           </View>
         ) : (
           <TouchableOpacity activeOpacity={0.85} onPress={() => router.push('/upgrade')}>
@@ -355,6 +377,26 @@ export default function ProfileScreen() {
 
         <Text style={styles.sectionTitle}>PROTOCOLS & PREFERENCES</Text>
         <Card style={styles.settingsCard}>
+          <TouchableOpacity
+            style={styles.settingsRow}
+            onPress={() => router.push('/coach' as any)}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.settingsIcon, { borderColor: 'rgba(214,167,86,0.45)' }]}>
+              <Crown size={18} color={colors.gold} />
+            </View>
+            <View style={styles.settingsInfo}>
+              <Text style={styles.settingsLabel}>Mimir 24/7 AI Coach (Pro)</Text>
+              <Text style={styles.settingsSub}>
+                {isPro
+                  ? 'Ask about macros, workout swaps & Muscle Armor'
+                  : 'Context-aware AI coaching · $24.99/mo or $149/yr'}
+              </Text>
+            </View>
+            <ChevronRight size={18} color={colors.muted} />
+          </TouchableOpacity>
+          <View style={styles.divider} />
+
           <TouchableOpacity
             style={styles.settingsRow}
             onPress={() => router.push('/glp1')}

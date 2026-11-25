@@ -2,6 +2,16 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { zustandStorage } from '@/lib/storage';
 
+export type PlanTier = 'free' | 'premium' | 'pro';
+
+export function hasPremiumAccess(plan?: PlanTier | null): boolean {
+  return plan === 'premium' || plan === 'pro';
+}
+
+export function hasProAccess(plan?: PlanTier | null): boolean {
+  return plan === 'pro';
+}
+
 export interface UserProfile {
   id: string;
   name: string;
@@ -18,7 +28,7 @@ export interface UserProfile {
   carbs: number;
   fat: number;
   bmi: number;
-  plan: 'free' | 'premium';
+  plan: PlanTier;
   onboardingComplete: boolean;
 }
 

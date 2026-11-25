@@ -8,6 +8,7 @@ import {
   Modal,
   TextInput,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -50,6 +51,7 @@ import { CURATED_FOODS } from '@/constants/foods';
 import type { SalvageOption, ParsedFoodItem } from '@/constants/tacticalFallback';
 import { searchFoods, lookupBarcode, type FoodSearchResult } from '@/lib/foodSearch';
 import { getSalvageDayOptions, parseFoodTextSmart } from '@/lib/tactical';
+import { analyzeMealPhoto, type MealPhotoScan } from '@/lib/pro';
 import { showAlert } from '@/lib/confirm';
 
 function MealTimeline({
@@ -320,13 +322,16 @@ export default function NutritionScreen() {
     toggleElectrolytes,
   } = useTrackerStore();
 
-  const isPremium = profile?.plan === 'premium';
+  const isPremium = profile?.plan === 'premium' || profile?.plan === 'pro';
+  const isPro = profile?.plan === 'pro';
   const [activeTab, setActiveTab] = useState<'plan' | 'diary'>('diary');
   const [expandedMeal, setExpandedMeal] = useState<string | null>('breakfast');
 
   // Add Food Modal state
   const [modalVisible, setModalVisible] = useState(false);
-  const [modalTab, setModalTab] = useState<'quick' | 'text' | 'search' | 'custom'>('quick');
+  const [modalTab, setModalTab] = useState<'quick' | 'text' | 'photo' | 'search' | 'custom'>('quick');
+  const [photoScanning, setPhotoScanning] = useState(false);
+  const [photoScanResult, setPhotoScanResult] = useState<MealPhotoScan | null>(null);
   const [targetSlot, setTargetSlot] = useState<string>('breakfast');
   const [glp1FilterOnly, setGlp1FilterOnly] = useState<boolean>(glp1Profile.enabled);
 
@@ -890,14 +895,15 @@ export default function NutritionScreen() {
               {[
                 { key: 'quick', label: 'Shield' },
                 { key: 'text', label: 'Text/Mic' },
-                { key: 'search', label: 'Search/UPC' },
+                { key: 'photo', label: 'Photo' },
+                { key: 'search', label: 'Search' },
                 { key: 'custom', label: 'Custom' },
               ].map((t) => (
                 <TouchableOpacity
                   key={t.key}
                   style={[styles.modalTabBtn, modalTab === t.key && styles.modalTabBtnActive]}
                   onPress={() =>
-                    setModalTab(t.key as 'quick' | 'text' | 'search' | 'custom')
+                    setModalTab(t.key as 'quick' | 'text' | 'photo' | 'search' | 'custom')
                   }
                 >
                   <Text
@@ -1039,6 +1045,105 @@ export default function NutritionScreen() {
                     >
                       <Text style={styles.customSaveText}>LOG SELECTED ITEMS</Text>
                     </TouchableOpacity>
+                  </>
+                )}
+              </ScrollView>
+            )}
+
+            {modalTab === 'photo' && (
+              <ScrollView style={{ maxHeight: 380 }}>
+                <Text style={styles.nlHint}>
+                  Snap or upload a plate photo for instant AI calorie, macro, and GLP-1 tolerance
+                  scoring.
+                </Text>
+                {!isPro ? (
+                  <TouchableOpacity
+                    style={[styles.customSaveBtn, { backgroundColor: colors.gold }]}
+                    onPress={() => {
+                      setModalVisible(false);
+                      router.push('/upgrade?tier=pro' as any);
+                    }}
+                  >
+                    <Text style={styles.customSaveText}>UNLOCK PHOTO SCAN (VIKING PRO)</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <>
+                    <TouchableOpacity
+                      style={[styles.customSaveBtn, { backgroundColor: colors.gold }]}
+                      disabled={photoScanning}
+                      onPress={() => {
+                        if (Platform.OS !== 'web' || typeof document === 'undefined') {
+                          showAlert(
+                            'Plate Photo Scan',
+                            'Use the web app to upload a plate photo, or use Text/Mic & Barcode scan on mobile.'
+                          );
+                          return;
+                        }
+                        const input = document.createElement('input');
+                        input.type = 'file';
+                        input.accept = 'image/jpeg,image/png,image/webp';
+                        input.onchange = () => {
+                          const file = input.files?.[0];
+                          if (!file) return;
+                          const reader = new FileReader();
+                          reader.onload = async () => {
+                            try {
+                              setPhotoScanning(true);
+                              const dataUrl = String(reader.result ?? '');
+                              const base64 = dataUrl.split(',')[1] ?? '';
+                              const mediaType =
+                                file.type === 'image/png' || file.type === 'image/webp'
+                                  ? file.type
+                                  : 'image/jpeg';
+                              const scan = await analyzeMealPhoto(base64, mediaType);
+                              setPhotoScanResult(scan);
+                            } catch (e: any) {
+                              showAlert('Photo Scan', e?.message ?? 'Could not analyze photo.');
+                            } finally {
+                              setPhotoScanning(false);
+                            }
+                          };
+                          reader.readAsDataURL(file);
+                        };
+                        input.click();
+                      }}
+                    >
+                      {photoScanning ? (
+                        <ActivityIndicator size="small" color={colors.black} />
+                      ) : (
+                        <Text style={styles.customSaveText}>UPLOAD PLATE PHOTO</Text>
+                      )}
+                    </TouchableOpacity>
+                    {photoScanResult && (
+                      <View style={[styles.resultRow, { marginTop: 12, flexDirection: 'column', alignItems: 'stretch', gap: 6 }]}>
+                        <Text style={styles.foodName}>{photoScanResult.meal_name}</Text>
+                        <Text style={styles.foodDetail}>
+                          {photoScanResult.portion} · GLP-1 Tolerance {photoScanResult.glp1_tolerance_score}/10
+                        </Text>
+                        <Text style={styles.foodMacroLine}>
+                          {photoScanResult.calories} kcal · P{photoScanResult.protein_g}g C
+                          {photoScanResult.carbs_g}g F{photoScanResult.fat_g}g
+                        </Text>
+                        <Text style={styles.foodDetail}>{photoScanResult.glp1_note}</Text>
+                        <TouchableOpacity
+                          style={styles.customSaveBtn}
+                          onPress={() => {
+                            handleLogResult({
+                              name: photoScanResult.meal_name,
+                              portion: photoScanResult.portion,
+                              calories: photoScanResult.calories,
+                              protein: photoScanResult.protein_g,
+                              carbs: photoScanResult.carbs_g,
+                              fat: photoScanResult.fat_g,
+                              source: 'custom',
+                            });
+                            setPhotoScanResult(null);
+                          }}
+                        >
+                          <Text style={styles.customSaveText}>LOG SCANNED MEAL</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
                   </>
                 )}
               </ScrollView>

@@ -51,8 +51,12 @@ export default function SuccessScreen() {
           setProfile(profileData);
           initFromProfile(profileData);
           await useTrackerStore.getState().hydrateFromSupabase(session.user.id);
-          if (profileData.plan === 'premium') {
-            setStatusText('Battle pass active! Entering the forge...');
+          if (profileData.plan === 'premium' || profileData.plan === 'pro') {
+            setStatusText(
+              profileData.plan === 'pro'
+                ? 'Viking Pro active! Entering the forge...'
+                : 'Battle pass active! Entering the forge...'
+            );
             timerRef.current = setTimeout(() => {
               if (mounted) router.replace('/(tabs)');
             }, 900);

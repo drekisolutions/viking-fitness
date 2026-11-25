@@ -182,7 +182,7 @@ Deno.serve(async (req: Request) => {
       .eq('id', user.id)
       .single();
     if (!profile) return json({ error: 'Profile not found' }, 404);
-    if (profile.plan !== 'premium') {
+    if (profile.plan !== 'premium' && profile.plan !== 'pro') {
       return json({ error: 'AI plans are a Premium feature.' }, 403);
     }
 

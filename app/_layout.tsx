@@ -67,6 +67,7 @@ export default function RootLayout() {
         <Stack.Screen name="reset-password" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="glp1" />
+        <Stack.Screen name="coach" />
         <Stack.Screen name="warband" />
         <Stack.Screen name="workout-session" />
         <Stack.Screen name="success" />

@@ -74,7 +74,7 @@ export default function Glp1Screen() {
     removeGlp1Shot,
   } = useTrackerStore();
 
-  const isPremium = profile?.plan === 'premium';
+  const isPremium = profile?.plan === 'premium' || profile?.plan === 'pro';
   const [chartWidth, setChartWidth] = useState(Math.min(540, SCREEN_WIDTH - 80));
   const [shotModalOpen, setShotModalOpen] = useState(false);
 

@@ -26,6 +26,8 @@ const APP_BASE_URL =
 const PRICE_IDS: Record<string, string | undefined> = {
   monthly: Deno.env.get('STRIPE_MONTHLY_PRICE_ID'),
   annual: Deno.env.get('STRIPE_ANNUAL_PRICE_ID'),
+  pro_monthly: Deno.env.get('STRIPE_PRO_MONTHLY_PRICE_ID'),
+  pro_annual: Deno.env.get('STRIPE_PRO_ANNUAL_PRICE_ID'),
 };
 
 const json = (body: unknown, status = 200) =>
@@ -57,11 +59,18 @@ Deno.serve(async (req: Request) => {
     const { plan } = await req.json();
     // Explicit allowlist — never index PRICE_IDS with a raw client string
     // (e.g. '__proto__'/'constructor' would resolve to inherited members).
-    if (plan !== 'monthly' && plan !== 'annual') {
+    if (
+      plan !== 'monthly' &&
+      plan !== 'annual' &&
+      plan !== 'pro_monthly' &&
+      plan !== 'pro_annual'
+    ) {
       return json({ error: 'Invalid plan' }, 400);
     }
     const priceId = PRICE_IDS[plan];
     if (!priceId) return json({ error: 'Plan is not available' }, 500);
+
+    const targetPlan = plan.startsWith('pro_') ? 'pro' : 'premium';
 
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
@@ -70,9 +79,9 @@ Deno.serve(async (req: Request) => {
       line_items: [{ price: priceId, quantity: 1 }],
       success_url: `${APP_BASE_URL}/success`,
       cancel_url: `${APP_BASE_URL}/`,
-      metadata: { userId: user.id, supabaseUserId: user.id },
+      metadata: { userId: user.id, supabaseUserId: user.id, targetPlan },
       subscription_data: {
-        metadata: { userId: user.id, supabaseUserId: user.id },
+        metadata: { userId: user.id, supabaseUserId: user.id, targetPlan },
         trial_period_days: 7,
       },
     });

@@ -20,10 +20,12 @@ export function createServiceClient(): SupabaseClient {
  * return a non-2xx status and let Stripe / RevenueCat retry delivery — silently
  * swallowing the error would strand a paying customer on the free plan.
  */
+export type PlanTier = 'free' | 'premium' | 'pro';
+
 export async function setPlan(
   supabase: SupabaseClient,
   userId: string,
-  plan: 'premium' | 'free'
+  plan: PlanTier
 ): Promise<void> {
   const { error } = await supabase
     .from('profiles')

@@ -21,7 +21,7 @@ import {
 
 export type UpgradeOutcome =
   | { status: 'redirecting' }                 // web: navigating to Stripe
-  | { status: 'purchased' }                   // native: entitlement active
+  | { status: 'purchased'; plan: 'premium' | 'pro' } // native: entitlement active
   | { status: 'cancelled' }                   // user backed out of the purchase
   | { status: 'unavailable'; message: string } // no compliant path in this build
   | { status: 'error'; message: string };
@@ -71,8 +71,8 @@ export async function upgradeToPremium(
   const result = await purchasePremium(plan);
   if (result.success) {
     // profiles.plan is set by the RevenueCat webhook (service role); the caller
-    // updates the local store so the UI reflects premium immediately.
-    return { status: 'purchased' };
+    // updates the local store so the UI reflects the tier immediately.
+    return { status: 'purchased', plan: result.plan ?? (plan.startsWith('pro_') ? 'pro' : 'premium') };
   }
   if (result.userCancelled) return { status: 'cancelled' };
   return { status: 'error', message: result.error ?? 'Purchase failed.' };
@@ -101,7 +101,7 @@ export async function restorePremium(userId: string): Promise<UpgradeOutcome> {
   const result = await restoreNativePurchases();
   if (result.success) {
     // profiles.plan is reconciled by the RevenueCat webhook (service role).
-    return { status: 'purchased' };
+    return { status: 'purchased', plan: result.plan ?? 'premium' };
   }
   return { status: 'error', message: result.error ?? 'No active subscription found.' };
 }

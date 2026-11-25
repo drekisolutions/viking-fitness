@@ -9,7 +9,7 @@ import {
   Alert,
   Platform,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { ChevronLeft, Check } from 'lucide-react-native';
@@ -29,18 +29,40 @@ const PREMIUM_FEATURES = [
   'Unlimited AI tactical macro & workout adaptations',
 ];
 
-const PLAN_ORDER: StripePlan[] = ['monthly', 'annual'];
+const PRO_FEATURES = [
+  'Everything in Viking Premium',
+  '24/7 Mimir AI Coach (context-aware training & nutrition)',
+  'Plate Photo Macro Scan + GLP-1 tolerance score',
+  'Priority AI coaching & deep progress guidance',
+];
+
+const TIER_PLANS: Record<'premium' | 'pro', StripePlan[]> = {
+  premium: ['monthly', 'annual'],
+  pro: ['pro_monthly', 'pro_annual'],
+};
 
 export default function UpgradeScreen() {
   const router = useRouter();
+  const { tier: tierParam } = useLocalSearchParams<{ tier?: string }>();
   const { profile, updateProfile } = useUserStore();
 
-  const [selectedPlan, setSelectedPlan] = useState<StripePlan>('annual');
+  const initialTier: 'premium' | 'pro' = tierParam === 'pro' ? 'pro' : 'premium';
+  const [selectedTier, setSelectedTier] = useState<'premium' | 'pro'>(initialTier);
+  const [selectedTerm, setSelectedTerm] = useState<'monthly' | 'annual'>('annual');
   const [loading, setLoading] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [nativePrices, setNativePrices] = useState<NativePrices>({});
 
-  const alreadyPremium = profile?.plan === 'premium';
+  const selectedPlan: StripePlan =
+    selectedTier === 'pro'
+      ? selectedTerm === 'annual'
+        ? 'pro_annual'
+        : 'pro_monthly'
+      : selectedTerm;
+
+  const alreadyActive =
+    profile?.plan === 'pro' ||
+    (selectedTier === 'premium' && profile?.plan === 'premium');
 
   // On native, show the real localized store price (Play/Apple) rather than the
   // hardcoded USD Stripe figure, which would mislead non-USD users.
@@ -73,11 +95,15 @@ export default function UpgradeScreen() {
           trackEvent('subscription_checkout_started', { plan: selectedPlan, platform: Platform.OS });
           break; // web: page navigates to Stripe
         case 'purchased':
-          updateProfile({ plan: 'premium' });
+          updateProfile({ plan: outcome.plan });
           trackEvent('subscription_started', { plan: selectedPlan, platform: Platform.OS });
-          Alert.alert('Welcome, Warrior', 'Your premium battle pass is active.', [
-            { text: 'Enter', onPress: goBack },
-          ]);
+          Alert.alert(
+            'Welcome, Warrior',
+            outcome.plan === 'pro'
+              ? 'Your Viking Pro membership is active.'
+              : 'Your premium battle pass is active.',
+            [{ text: 'Enter', onPress: goBack }]
+          );
           break;
         case 'cancelled':
           break; // user backed out — no message
@@ -102,8 +128,8 @@ export default function UpgradeScreen() {
     try {
       const outcome = await restorePremium(profile.id);
       if (outcome.status === 'purchased') {
-        updateProfile({ plan: 'premium' });
-        Alert.alert('Restored', 'Your premium subscription is active again.', [
+        updateProfile({ plan: outcome.plan });
+        Alert.alert('Restored', 'Your subscription is active again.', [
           { text: 'Great', onPress: goBack },
         ]);
       } else if (outcome.status === 'unavailable' || outcome.status === 'error') {
@@ -132,22 +158,46 @@ export default function UpgradeScreen() {
           showsVerticalScrollIndicator={false}
         >
           <Text style={styles.eyebrow}>⭐ VIKING</Text>
-          <Text style={styles.title}>PREMIUM</Text>
+          <Text style={styles.title}>{selectedTier === 'pro' ? 'PRO' : 'PREMIUM'}</Text>
           <Text style={styles.subtitle}>
-            Unlock the full arsenal and forge your legend without limits.
+            {selectedTier === 'pro'
+              ? '24/7 Mimir AI Coach + Plate Photo Macro Scan on top of every Premium tool.'
+              : 'Unlock the full arsenal and forge your legend without limits.'}
           </Text>
 
-          {alreadyPremium ? (
+          <View style={styles.tierSwitchRow}>
+            {(['premium', 'pro'] as const).map((tier) => {
+              const active = selectedTier === tier;
+              return (
+                <TouchableOpacity
+                  key={tier}
+                  style={[styles.tierSwitchBtn, active && styles.tierSwitchBtnActive]}
+                  onPress={() => setSelectedTier(tier)}
+                  activeOpacity={0.85}
+                >
+                  <Text style={[styles.tierSwitchText, active && styles.tierSwitchTextActive]}>
+                    {tier === 'pro' ? 'PRO · $24.99/MO' : 'PREMIUM · $14.99/MO'}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {alreadyActive ? (
             <Card glowColor="gold" style={styles.activeCard}>
-              <Text style={styles.activeTitle}>YOU'RE PREMIUM</Text>
+              <Text style={styles.activeTitle}>
+                {profile?.plan === 'pro' ? "YOU'RE VIKING PRO" : "YOU'RE PREMIUM"}
+              </Text>
               <Text style={styles.activeSub}>
-                Your battle pass is active. Fight on, warrior.
+                {profile?.plan === 'pro'
+                  ? 'All Pro & Premium weapons are active. Fight on, warrior.'
+                  : 'Your Premium pass is active. Switch to Pro above for Mimir AI Coach & Photo Scan.'}
               </Text>
             </Card>
           ) : (
             <>
               <Card style={styles.featureCard}>
-                {PREMIUM_FEATURES.map((f) => (
+                {(selectedTier === 'pro' ? PRO_FEATURES : PREMIUM_FEATURES).map((f) => (
                   <View key={f} style={styles.featureRow}>
                     <Check size={16} color={colors.gold} />
                     <Text style={styles.featureText}>{f}</Text>
@@ -156,15 +206,15 @@ export default function UpgradeScreen() {
               </Card>
 
               <View style={styles.plansRow}>
-                {PLAN_ORDER.map((plan) => {
+                {TIER_PLANS[selectedTier].map((plan) => {
                   const p = STRIPE_PRICES[plan];
-                  const active = selectedPlan === plan;
+                  const active = selectedTerm === p.term;
                   const displayPrice = nativePrices[plan] ?? p.label;
                   return (
                     <TouchableOpacity
                       key={plan}
                       style={[styles.planOption, active && styles.planOptionActive]}
-                      onPress={() => setSelectedPlan(plan)}
+                      onPress={() => setSelectedTerm(p.term)}
                       activeOpacity={0.85}
                     >
                       {p.savings && (
@@ -173,7 +223,7 @@ export default function UpgradeScreen() {
                         </View>
                       )}
                       <Text style={[styles.planName, active && styles.planNameActive]}>
-                        {plan === 'annual' ? 'ANNUAL' : 'MONTHLY'}
+                        {p.term === 'annual' ? 'ANNUAL' : 'MONTHLY'}
                       </Text>
                       <Text style={[styles.planPrice, active && styles.planPriceActive]}>
                         {displayPrice}
@@ -269,6 +319,34 @@ const styles = StyleSheet.create({
     color: colors.muted,
     marginTop: 8,
     lineHeight: 20,
+  },
+  tierSwitchRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 20,
+    backgroundColor: colors.surface,
+    padding: 4,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  tierSwitchBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: radius.sm,
+    alignItems: 'center',
+  },
+  tierSwitchBtnActive: {
+    backgroundColor: colors.gold,
+  },
+  tierSwitchText: {
+    fontFamily: fonts.heading,
+    fontSize: 12,
+    color: colors.muted,
+    letterSpacing: 0.8,
+  },
+  tierSwitchTextActive: {
+    color: colors.black,
   },
   featureCard: { padding: 20, marginTop: 24, gap: 12 },
   featureRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },

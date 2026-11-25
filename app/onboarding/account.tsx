@@ -16,7 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { ChevronLeft, Eye, EyeOff } from 'lucide-react-native';
 import { useOnboardingStore } from '@/store/onboarding';
-import { useUserStore } from '@/store/user';
+import { useUserStore, type PlanTier } from '@/store/user';
 import { useTrackerStore, getTodayDateKey } from '@/store/tracker';
 import { Card } from '@/components/ui/Card';
 import { colors, fonts, radius } from '@/constants/theme';
@@ -112,7 +112,7 @@ export default function AccountScreen() {
     }
   };
 
-  const enterApp = (userId: string, userEmail: string, plan: 'free' | 'premium') => {
+  const enterApp = (userId: string, userEmail: string, plan: PlanTier) => {
     seedInitialTracker(userId);
     identifyUser(userId, { plan, goal: onboarding.goal });
     trackEvent('onboarding_completed', { plan, goal: onboarding.goal });
@@ -168,7 +168,7 @@ export default function AccountScreen() {
     return data.user.id;
   };
 
-  const handleEmailSignUp = async (plan: 'free' | 'premium') => {
+  const handleEmailSignUp = async (plan: PlanTier) => {
     if (!validateCredentials()) return;
     setLoading(true);
     try {
@@ -205,7 +205,7 @@ export default function AccountScreen() {
             break;
           case 'purchased':
             trackEvent('subscription_started', { plan: 'monthly', platform: Platform.OS });
-            enterApp(userId, email, 'premium');
+            enterApp(userId, email, outcome.plan);
             break;
           case 'cancelled':
             enterApp(userId, email, 'free');

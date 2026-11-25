@@ -31,7 +31,7 @@ const SECTIONS: { title: string; body: string }[] = [
   {
     title: 'Subscriptions & Auto-Renewal',
     body:
-      'Premium is offered as an auto-renewable subscription (monthly at $14.99 or annual at $89, ' +
+      'Premium is offered as an auto-renewable subscription (monthly at $14.99 or annual at $89 for Premium; monthly at $24.99 or annual at $149 for Pro, ' +
       'shown in your local currency at checkout), which may include an introductory free trial. ' +
       'Payment is charged to your Google Play or Apple account (mobile) or via Stripe (web) at ' +
       'confirmation of purchase. The subscription automatically renews at the then-current price ' +
