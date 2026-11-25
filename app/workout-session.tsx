@@ -232,7 +232,7 @@ export default function WorkoutSessionScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="light" backgroundColor={colors.black} />
+      <StatusBar style="light" />
       <SafeAreaView style={styles.safeArea}>
         {/* Top Bar */}
         <View style={styles.header}>

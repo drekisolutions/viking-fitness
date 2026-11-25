@@ -183,7 +183,7 @@ export default function ResultsScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="light" backgroundColor={colors.black} />
+      <StatusBar style="light" />
 
       {PARTICLES.map((p) => (
         <Particle key={p.id} {...p} />

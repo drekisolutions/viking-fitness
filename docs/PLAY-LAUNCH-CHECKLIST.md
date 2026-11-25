@@ -97,8 +97,8 @@ to Vercel afterwards so `/privacy`, `/terms`, and the new checkout client go liv
      | Data shared with third parties? | Service providers only (Supabase, RevenueCat, Stripe on web) — select "No" for sharing as defined by Play (no advertising/analytics sharing) |
    - **Account deletion URL** (required since app supports account creation): use `https://viking-fitness-pink.vercel.app/privacy` (documents both deletion paths).
 6. **Monetize → Subscriptions**: create one subscription per plan:
-   - `vf_premium_monthly` — $9.99/mo, 7-day free trial (offer phase)
-   - `vf_premium_annual` — $69.99/yr, 7-day free trial
+   - `vf_premium_monthly` — $14.99/mo, 7-day free trial (offer phase)
+   - `vf_premium_annual` — $89/yr, 7-day free trial
    Base-plan IDs are what RevenueCat imports — note them exactly.
 
 ---

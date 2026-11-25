@@ -73,7 +73,7 @@ export default function BodyScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <SafeAreaView style={styles.container}>
-          <StatusBar style="light" backgroundColor={colors.black} />
+          <StatusBar style="light" />
 
           {/* Header */}
           <View style={styles.header}>

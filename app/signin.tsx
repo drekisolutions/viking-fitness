@@ -11,7 +11,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { ChevronLeft, Eye, EyeOff } from 'lucide-react-native';
@@ -22,6 +22,7 @@ import { colors, fonts, radius } from '@/constants/theme';
 import { supabase } from '@/lib/supabase';
 import { fetchAppProfile } from '@/lib/session';
 import { useTrackerStore } from '@/store/tracker';
+import { identifyUser, trackEvent } from '@/lib/analytics';
 
 export default function SignInScreen() {
   const router = useRouter();
@@ -84,6 +85,8 @@ export default function SignInScreen() {
           setProfile(profileData);
           // Seed the onboarding store so macro/goal data is available across tabs.
           initFromProfile(profileData);
+          identifyUser(data.user.id, { plan: profileData.plan, goal: profileData.goal });
+          trackEvent('sign_in', { plan: profileData.plan });
           await useTrackerStore.getState().hydrateFromSupabase(data.user.id);
           router.replace(profileData.onboardingComplete ? '/(tabs)' : '/onboarding');
         } else {
@@ -104,7 +107,7 @@ export default function SignInScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <SafeAreaView style={styles.container}>
-        <StatusBar style="light" backgroundColor={colors.black} />
+        <StatusBar style="light" />
 
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
@@ -160,6 +163,14 @@ export default function SignInScreen() {
               </TouchableOpacity>
             </View>
           </Card>
+
+          <TouchableOpacity
+            style={styles.forgotRow}
+            onPress={() => router.push('/forgot-password' as Href)}
+            hitSlop={8}
+          >
+            <Text style={styles.forgotText}>Forgot password?</Text>
+          </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.signInBtn}
@@ -242,6 +253,16 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   eyeBtn: { padding: 8 },
+  forgotRow: {
+    alignSelf: 'flex-end',
+    marginTop: 12,
+    paddingVertical: 4,
+  },
+  forgotText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 13,
+    color: colors.blue,
+  },
   signInBtn: {
     marginTop: 24,
     height: 54,

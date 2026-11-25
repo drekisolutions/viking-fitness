@@ -228,7 +228,7 @@ export default function Glp1Screen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="light" backgroundColor={colors.black} />
+      <StatusBar style="light" />
       <SafeAreaView style={styles.safeArea}>
         {/* Header */}
         <View style={styles.header}>

@@ -7,10 +7,10 @@ Norse-themed fitness & nutrition SaaS mobile app built with React Native + Expo.
 
 ## Quick Context
 
-- Expo SDK 54, Expo Router 6, NativeWind v4, Zustand, Reanimated 4.1.x
-- Target runtime: **Expo Go SDK 54**
+- Expo SDK 58, Expo Router 58, NativeWind v4, Zustand, Reanimated 4.7.x
+- Target runtime: **Expo SDK 58** (development / EAS build)
 - Always use `npm install --legacy-peer-deps`
-- `newArchEnabled: true` required (reanimated 4.x needs New Architecture)
+- New Architecture is always enabled in Expo SDK 55+ (`newArchEnabled` removed from `app.json`)
 - `react-native-worklets` must stay as an explicit dependency
 
 ## File Structure

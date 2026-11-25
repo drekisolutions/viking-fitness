@@ -3,6 +3,7 @@ import {
   View,
   Text,
   TextInput,
+  type TextInputInstance,
   TouchableOpacity,
   StyleSheet,
   ScrollView,
@@ -26,7 +27,7 @@ export default function ProfileScreen() {
   const [localAge, setLocalAge] = useState(age > 0 ? String(age) : '');
   const [localSex, setLocalSex] = useState<'male' | 'female'>(sex);
 
-  const nameRef = useRef<TextInput>(null);
+  const nameRef = useRef<TextInputInstance>(null);
 
   useEffect(() => {
     const t = setTimeout(() => nameRef.current?.focus(), 300);
@@ -52,7 +53,7 @@ export default function ProfileScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <SafeAreaView style={styles.container}>
-          <StatusBar style="light" backgroundColor={colors.black} />
+          <StatusBar style="light" />
 
           {/* Header */}
           <View style={styles.header}>

@@ -19,13 +19,14 @@ import { colors, fonts, radius } from '@/constants/theme';
 import { STRIPE_PRICES, type StripePlan } from '@/lib/stripe';
 import { upgradeToPremium, restorePremium } from '@/lib/upgrade';
 import { getNativePrices, type NativePrices } from '@/lib/purchases';
+import { trackEvent } from '@/lib/analytics';
 
 const PREMIUM_FEATURES = [
   'AI-generated meal plans (macro & GLP-1 wave tuned)',
   'AI-generated workouts & Battlefield Pivots',
   'AI Salvage My Day & voice/text food parser',
   'GLP-1 Reverse-Diet & Taper Off-Ramp',
-  'Full Muscle Armor & adaptive metabolism analytics',
+  'Unlimited AI tactical macro & workout adaptations',
 ];
 
 const PLAN_ORDER: StripePlan[] = ['monthly', 'annual'];
@@ -69,9 +70,11 @@ export default function UpgradeScreen() {
       const outcome = await upgradeToPremium(profile.id, selectedPlan);
       switch (outcome.status) {
         case 'redirecting':
+          trackEvent('subscription_checkout_started', { plan: selectedPlan, platform: Platform.OS });
           break; // web: page navigates to Stripe
         case 'purchased':
           updateProfile({ plan: 'premium' });
+          trackEvent('subscription_started', { plan: selectedPlan, platform: Platform.OS });
           Alert.alert('Welcome, Warrior', 'Your premium battle pass is active.', [
             { text: 'Enter', onPress: goBack },
           ]);

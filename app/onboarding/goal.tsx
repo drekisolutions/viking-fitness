@@ -51,7 +51,7 @@ export default function GoalScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar style="light" backgroundColor={colors.black} />
+      <StatusBar style="light" />
 
       {/* Header */}
       <View style={styles.header}>

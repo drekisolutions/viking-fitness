@@ -442,7 +442,7 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="light" backgroundColor={colors.black} />
+      <StatusBar style="light" />
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         {/* ── 1: Header ── */}
         <FadeSlide delay={0}>

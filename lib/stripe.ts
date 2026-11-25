@@ -20,8 +20,8 @@ export const STRIPE_PRICES: Record<StripePlan, {
   label: string;
   savings: string | null;
 }> = {
-  monthly: { amount: 9.99,  label: '$9.99/mo',  savings: null },
-  annual:  { amount: 69.99, label: '$69.99/yr', savings: 'Save 42%' },
+  monthly: { amount: 14.99, label: '$14.99/mo', savings: null },
+  annual:  { amount: 89,    label: '$89/yr',    savings: 'Save 50%' },
 };
 
 export async function startCheckout(

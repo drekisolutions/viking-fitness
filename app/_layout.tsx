@@ -19,6 +19,7 @@ import {
 } from '@expo-google-fonts/inter';
 import * as SplashScreen from 'expo-splash-screen';
 import { colors, fonts } from '@/constants/theme';
+import { initAnalytics } from '@/lib/analytics';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -26,6 +27,7 @@ export default function RootLayout() {
   useFrameworkReady();
 
   useEffect(() => {
+    initAnalytics();
     if (Platform.OS === 'web') {
       inject();
     }
@@ -61,6 +63,8 @@ export default function RootLayout() {
         <Stack.Screen name="index" />
         <Stack.Screen name="onboarding" />
         <Stack.Screen name="signin" />
+        <Stack.Screen name="forgot-password" />
+        <Stack.Screen name="reset-password" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="glp1" />
         <Stack.Screen name="warband" />

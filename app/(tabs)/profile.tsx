@@ -326,7 +326,7 @@ export default function ProfileScreen() {
               <View style={styles.upgradeInfo}>
                 <Text style={styles.upgradeTitle}>Upgrade to Premium</Text>
                 <Text style={styles.upgradeSub}>
-                  AI GLP-1/workout plans, Reverse-Diet Off-Ramp & analytics
+                  AI meal & workout plans, Battlefield Pivots & Reverse-Diet Off-Ramp
                 </Text>
               </View>
               <ChevronRight size={18} color={colors.gold} />

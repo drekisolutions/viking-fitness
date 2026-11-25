@@ -78,7 +78,7 @@ app/
 ## Product Model
 
 **Free tier:** meal tracking, macro tracking, basic workouts, Warrior ranks I–II
-**Premium ($9.99/mo):** AI meal plans, AI workouts, progress photos, full analytics, all ranks
+**Premium ($14.99/mo or $89/yr):** AI meal plans, AI workouts, progress photos, full analytics, all ranks
 
 **Rank system:** Thrall → Raider → Berserker → Jarl → Warchief → Odinborn
 

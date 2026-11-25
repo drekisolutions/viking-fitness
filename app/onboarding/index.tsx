@@ -131,7 +131,7 @@ export default function OnboardingWelcome() {
 
   return (
     <View style={styles.root}>
-      <StatusBar style="light" backgroundColor={colors.black} />
+      <StatusBar style="light" />
 
       {/* Ember particles — always visible */}
       {PARTICLES.map((p) => (

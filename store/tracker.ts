@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import { zustandStorage } from '@/lib/storage';
 import { supabase } from '@/lib/supabase';
 import { calculateEpley1RM } from '@/constants/calculations';
+import { trackEvent } from '@/lib/analytics';
 import {
   DEFAULT_GLP1_PROFILE,
   type Glp1ProfileConfig,
@@ -366,6 +367,7 @@ export const useTrackerStore = create<TrackerState>()(
           createdAt: new Date().toISOString(),
         };
         set((state) => ({ foodLogs: [record, ...state.foodLogs] }));
+        trackEvent('food_logged', { source: record.source, mealSlot: record.mealSlot });
 
         if (isRemoteUser(userId)) {
           Promise.resolve(
@@ -660,6 +662,11 @@ export const useTrackerStore = create<TrackerState>()(
           workoutSessions: [session, ...prev.workoutSessions],
           activeWorkout: null,
         }));
+        trackEvent('workout_logged', {
+          split: session.split,
+          durationMin: session.durationMin,
+          totalVolumeLbs: session.totalVolumeLbs,
+        });
 
         if (isRemoteUser(userId)) {
           Promise.resolve(

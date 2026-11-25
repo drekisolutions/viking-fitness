@@ -6,16 +6,15 @@
     "orientation": "portrait",
     "scheme": "vikingfitness",
     "userInterfaceStyle": "dark",
-    "newArchEnabled": true,
     "icon": "./assets/icon.png",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#0B0B0D"
-    },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.drekilabs.vikingfitness"
+      "bundleIdentifier": "com.drekilabs.vikingfitness",
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "Viking Fitness uses the camera to scan food barcodes for nutrition logging."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -38,9 +37,12 @@
         {
           "backgroundColor": "#0B0B0D",
           "image": "./assets/splash.png",
-          "imageWidth": 200
+          "imageWidth": 200,
+          "resizeMode": "contain"
         }
-      ]
+      ],
+      "expo-secure-store",
+      "expo-status-bar"
     ],
     "experiments": {
       "typedRoutes": true

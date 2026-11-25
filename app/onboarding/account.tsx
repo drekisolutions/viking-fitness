@@ -24,20 +24,20 @@ import { supabase } from '@/lib/supabase';
 import { STRIPE_PRICES } from '@/lib/stripe';
 import { upgradeToPremium } from '@/lib/upgrade';
 import { getNativePrices } from '@/lib/purchases';
+import { identifyUser, trackEvent } from '@/lib/analytics';
 
 const FREE_FEATURES = [
   'Workout & set logging',
   'Food diary & barcode scan',
   'GLP-1 shot & wave tracker',
-  'Muscle Armor score',
+  'Muscle Armor & adaptive TDEE',
 ];
 const PREMIUM_FEATURES = [
   'Everything free',
   'AI meal & workout plans',
   'AI Battlefield Pivots & Salvage Day',
+  'AI voice & text food parser',
   'GLP-1 Reverse-Diet Off-Ramp',
-  'Full Muscle Armor & analytics',
-  'All Warrior ranks',
 ];
 
 export default function AccountScreen() {
@@ -114,6 +114,8 @@ export default function AccountScreen() {
 
   const enterApp = (userId: string, userEmail: string, plan: 'free' | 'premium') => {
     seedInitialTracker(userId);
+    identifyUser(userId, { plan, goal: onboarding.goal });
+    trackEvent('onboarding_completed', { plan, goal: onboarding.goal });
     setProfile({
       id: userId,
       name: onboarding.name,
@@ -198,9 +200,11 @@ export default function AccountScreen() {
         const outcome = await upgradeToPremium(userId, 'monthly');
         switch (outcome.status) {
           case 'redirecting':
+            trackEvent('subscription_checkout_started', { plan: 'monthly', platform: Platform.OS });
             // Web: the page is navigating to Stripe — nothing more to do.
             break;
           case 'purchased':
+            trackEvent('subscription_started', { plan: 'monthly', platform: Platform.OS });
             enterApp(userId, email, 'premium');
             break;
           case 'cancelled':
@@ -255,7 +259,7 @@ export default function AccountScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <SafeAreaView style={styles.container}>
-        <StatusBar style="light" backgroundColor={colors.black} />
+        <StatusBar style="light" />
 
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>

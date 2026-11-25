@@ -142,43 +142,13 @@ _(GitHub step done — see top section. Next: Vercel + Supabase deploys, both ow
 
 ---
 
-## ⏳ Pending
-
-### Step 3 — Vercel
-- `expo export --platform web` → deploy
-- Custom domain setup
-
-### Step 4 — Supabase
-- Create project
-- Schema: users, workouts, food_log, body_measurements, achievements
-- Replace mock auth in `app/onboarding/account.tsx` with real Supabase auth
-- Add `@supabase/supabase-js` + `expo-secure-store`
-- Row Level Security policies
-
-### Step 5 — Stripe
-- Web: Stripe Checkout for premium subscriptions
-- Mobile: RevenueCat (`react-native-purchases`) → App Store + Play Store products
-- Free vs Premium gate in app logic
-
-### Step 6 — PostHog
-- Install `posthog-react-native`
-- Track: onboarding_completed, subscription_started, workout_logged, food_logged
-- Funnel: onboarding → account → premium conversion
-
-### Step 7 — EAS + App Stores
-- `npm install -g eas-cli`
-- Configure `eas.json` (development, preview, production profiles)
-- Apple Developer account setup (bundle ID: com.drekilabs.vikingfitness)
-- Google Play Console setup (package: com.drekilabs.vikingfitness)
-- `eas build --platform all`
-- `eas submit`
-
----
-
-## Known Issues / Tech Debt
-- Auth is real Supabase now: signUp on `account.tsx`, signIn on `signin.tsx`. The
-  "no dedicated sign-IN screen" gap is CLOSED (2026-07-29).
-- All dashboard data (workouts, food log, weight) is hardcoded/static
-- No persistence — Zustand state resets on app restart (needs AsyncStorage or Supabase)
-- Profile photo is a Pexels placeholder URL
-- Workout and nutrition data not connected to any real database
+## ✅ Pricing, Auth Recovery, Analytics & iOS Config (2026-11-24)
+- **Pricing updated to $14.99/mo and $89/yr:** Live Stripe product `Viking Fitness Premium` (`prod_VgqV6Ke31s3Lti`) + prices (`price_1UfSosPoN0MD3e7CWy0NHSNP` / `price_1UfSotPoN0MD3e7CPKrbvMpB`) created, Supabase production secrets (`STRIPE_MONTHLY_PRICE_ID`, `STRIPE_ANNUAL_PRICE_ID`) updated, and `lib/stripe.ts`, `app/terms.tsx`, `docs/PLAY-LAUNCH-CHECKLIST.md`, `.env` updated.
+- **Forgot / Reset Password:** Added `app/forgot-password.tsx`, `app/reset-password.tsx`, `Forgot password?` link on `app/signin.tsx`, and `detectSessionInUrl: Platform.OS === 'web'` in `lib/supabase.ts`.
+- **Paywall Accuracy:** Removed un-gated Muscle Armor/analytics claims from `app/upgrade.tsx`, `app/onboarding/account.tsx`, and `app/(tabs)/profile.tsx` so paywall copy matches server/client-gated features.
+- **PostHog Analytics:** Installed `posthog-react-native` and wired `lib/analytics.ts` (`initAnalytics`, `identifyUser`, `trackEvent` for `onboarding_completed`, `sign_in`, `subscription_checkout_started`, `subscription_started`, `food_logged`, `workout_logged`). Set `EXPO_PUBLIC_POSTHOG_API_KEY` to enable.
+- **iOS Config:** Added `ios.buildNumber` (`"1"`) and `ios.infoPlist` (`ITSAppUsesNonExemptEncryption: false`, `NSCameraUsageDescription`) to `app.json`.
+- **Remaining Store Console Actions:**
+  1. **Play Upload Key:** `eas submit` returned HTTP 403 (`97:97:...` vs expected `71:16:...`). Wait for Play upload key reset propagation or re-check Play Console → App Integrity, then re-run `eas submit -p android --profile production`.
+  2. **Play Subscriptions & RevenueCat:** Service account lacks Play Console financial/store-presence permission (`403` on `POST /subscriptions`). Create `vf_premium_monthly` ($14.99/mo) and `vf_premium_annual` ($89/yr) in Play Console UI and import into RevenueCat.
+  3. **iOS Build & App Store Connect:** Run `eas build --platform ios --profile production` (requires Apple Developer account) and configure App Store Connect + RevenueCat iOS app.
