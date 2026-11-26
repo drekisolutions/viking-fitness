@@ -40,20 +40,24 @@ import { identifyUser, trackEvent } from '@/lib/analytics';
 const ANDROID_APK_URL =
   'https://expo.dev/artifacts/eas/s6sO3QJ41wFzJbJqeaDbxf9jSTOj-X7vk_R56D3g-xc.apk';
 
-// Dreki Solutions Brand Kit tokens
+// Live www.dreki-solutions.ai ("dreki-forge" / "asgard-glass") design tokens
 const BRAND = {
-  obsidian: '#141414',
-  charcoal: '#181818',
-  gold: '#9B7B3F',
-  goldTint10: 'rgba(155, 123, 63, 0.10)',
-  goldTint25: 'rgba(155, 123, 63, 0.25)',
-  ember: '#D4762C',
-  emberTint12: 'rgba(212, 118, 44, 0.12)',
-  steel: '#3A6B8C',
+  obsidian: '#090909',
+  obsidianDeep: '#0c0c0b',
+  charcoal: '#171613',
+  gold: '#e6b85b',
+  goldPale: '#ffe2a1',
+  goldTint10: 'rgba(230, 184, 91, 0.10)',
+  goldTint25: 'rgba(224, 172, 71, 0.34)',
+  ember: '#e99b5d',
+  copper: '#b6532b',
+  emberTint12: 'rgba(233, 155, 93, 0.14)',
+  steel: '#a7e0f3',
   victory: '#2D7A4F',
-  ivory: '#E8E8E8',
-  smoke: '#6B6B6B',
-  border: '#262626',
+  ivory: '#f1ece2',
+  ivorySoft: '#d8d1c2',
+  smoke: '#b6afa0',
+  border: 'rgba(224, 172, 71, 0.24)',
   danger: '#E57373',
 };
 
@@ -405,7 +409,7 @@ export default function LandingScreen() {
           <View style={styles.navInner}>
             <View style={styles.brandLockup}>
               <Image
-                source={require('../assets/brand/dreki_icon_mark.png')}
+                source={require('../assets/brand/dreki-network-mark.webp')}
                 style={styles.navLogo}
                 resizeMode="contain"
               />
@@ -911,7 +915,7 @@ export default function LandingScreen() {
         <View style={styles.footerOuter}>
           <View style={styles.footerInner}>
             <Image
-              source={require('../assets/brand/dreki_logo_horizontal.png')}
+              source={require('../assets/brand/dreki-logo-horizontal.webp')}
               style={styles.footerLogo}
               resizeMode="contain"
             />
@@ -1148,7 +1152,7 @@ const styles = StyleSheet.create({
 
   sectionOuter: { paddingVertical: 60 },
   altBand: {
-    backgroundColor: '#111111',
+    backgroundColor: '#0c0c0b',
     borderTopWidth: 1,
     borderBottomWidth: 1,
     borderColor: BRAND.border,
@@ -1354,9 +1358,9 @@ const styles = StyleSheet.create({
   },
   tierCardWide: { flex: 1 },
   tierCardHighlight: {
-    borderColor: BRAND.gold,
-    borderTopColor: BRAND.ember,
-    backgroundColor: '#1C1915',
+    borderColor: '#f5bf5091',
+    borderTopColor: BRAND.goldPale,
+    backgroundColor: '#1f1b15',
   },
   tierBadge: {
     alignSelf: 'flex-start',
