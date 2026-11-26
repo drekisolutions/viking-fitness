@@ -17,6 +17,10 @@ import {
   Inter_400Regular,
   Inter_500Medium,
 } from '@expo-google-fonts/inter';
+import {
+  Cinzel_400Regular,
+  Cinzel_700Bold,
+} from '@expo-google-fonts/cinzel';
 import * as SplashScreen from 'expo-splash-screen';
 import { colors, fonts } from '@/constants/theme';
 import { initAnalytics } from '@/lib/analytics';
@@ -40,6 +44,8 @@ export default function RootLayout() {
     Oswald_600SemiBold,
     Inter_400Regular,
     Inter_500Medium,
+    Cinzel_400Regular,
+    Cinzel_700Bold,
   });
 
   useEffect(() => {
@@ -61,6 +67,7 @@ export default function RootLayout() {
     <>
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.black } }}>
         <Stack.Screen name="index" />
+        <Stack.Screen name="landing" />
         <Stack.Screen name="onboarding" />
         <Stack.Screen name="signin" />
         <Stack.Screen name="forgot-password" />

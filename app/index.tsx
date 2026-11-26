@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, Platform } from 'react-native';
 import { Redirect } from 'expo-router';
+import LandingScreen from '@/app/landing';
 import { useUserStore } from '@/store/user';
 import { useOnboardingStore } from '@/store/onboarding';
 import { useTrackerStore } from '@/store/tracker';
@@ -63,6 +64,10 @@ export default function Index() {
 
   if (profile?.onboardingComplete) {
     return <Redirect href="/(tabs)" />;
+  }
+
+  if (Platform.OS === 'web') {
+    return <LandingScreen />;
   }
 
   return <Redirect href="/onboarding" />;
