@@ -38,7 +38,7 @@ import { useOnboardingStore } from '@/store/onboarding';
 import { identifyUser, trackEvent } from '@/lib/analytics';
 
 const ANDROID_APK_URL =
-  'https://expo.dev/artifacts/eas/s6sO3QJ41wFzJbJqeaDbxf9jSTOj-X7vk_R56D3g-xc.apk';
+  'https://expo.dev/artifacts/eas/9Po_VnGUsjSGTulLDLcHXFyB_zdbmiBUcWcRlT8HV1M.apk';
 
 // Live www.dreki-solutions.ai ("dreki-forge" / "asgard-glass") design tokens
 const BRAND = {
