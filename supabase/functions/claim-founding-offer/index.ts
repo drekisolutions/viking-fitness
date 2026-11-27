@@ -1,6 +1,6 @@
 // Supabase Edge Function — Founding 10 Offer Claim
-// First 10 users to sign up via the landing page receive 1 year of Viking Premium free.
-// Uses service role to write profiles.plan = 'premium' (enforced by lock_plan_column).
+// First 10 users to sign up via the landing page receive 1 year of Viking Pro free.
+// Uses service role to write profiles.plan = 'pro' (enforced by lock_plan_column).
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2?target=deno';
 import { corsHeaders } from '../_shared/cors.ts';
@@ -57,8 +57,8 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
 
     if (existing) {
-      await setPlan(admin, user.id, 'premium');
-      return json({ claimed: true, alreadyClaimed: true, expiresAt: existing.expires_at });
+      await setPlan(admin, user.id, 'pro');
+      return json({ claimed: true, alreadyClaimed: true, plan: 'pro', expiresAt: existing.expires_at });
     }
 
     // Check remaining founding spots
@@ -74,7 +74,7 @@ Deno.serve(async (req: Request) => {
     const { error: insertError } = await admin.from('founding_claims').insert({
       user_id: user.id,
       email: user.email ?? '',
-      granted_plan: 'premium',
+      granted_plan: 'pro',
       expires_at: expiresAt,
     });
 
@@ -82,9 +82,9 @@ Deno.serve(async (req: Request) => {
       return json({ error: insertError.message }, 500);
     }
 
-    await setPlan(admin, user.id, 'premium');
+    await setPlan(admin, user.id, 'pro');
     const remaining = Math.max(0, MAX_FOUNDING_SPOTS - ((count ?? 0) + 1));
-    return json({ claimed: true, remaining, expiresAt });
+    return json({ claimed: true, plan: 'pro', remaining, expiresAt });
   } catch (err: any) {
     console.error('claim-founding-offer error:', err);
     return json({ error: err?.message ?? 'Unable to claim founding offer.' }, 500);

@@ -123,13 +123,13 @@ const TIERS = [
   },
   {
     name: 'PREMIUM',
-    subtitle: 'First 10 Sign-Ups: Year 1 Free',
+    subtitle: 'Full AI Arsenal',
     monthly: '$14.99/mo',
     annual: '$89/yr',
-    badge: 'FOUNDING 10: $0 YR 1',
-    cta: 'CLAIM FREE YEAR',
-    route: '#signup',
-    highlight: true,
+    badge: 'SAVE 50%',
+    cta: 'START 7-DAY FREE TRIAL',
+    route: '/onboarding',
+    highlight: false,
     features: [
       'Everything in Free',
       'AI-generated meal & workout plans (GLP-1 tuned)',
@@ -140,13 +140,13 @@ const TIERS = [
   },
   {
     name: 'PRO',
-    subtitle: '24/7 AI Co-Pilot',
+    subtitle: 'First 10 Sign-Ups: Year 1 Free',
     monthly: '$24.99/mo',
     annual: '$149/yr',
-    badge: 'AI CO-PILOT',
-    cta: 'GO VIKING PRO',
-    route: '/upgrade?tier=pro',
-    highlight: false,
+    badge: 'FOUNDING 10: $0 YR 1',
+    cta: 'CLAIM FREE PRO YEAR',
+    route: '#signup',
+    highlight: true,
     features: [
       'Everything in Viking Premium',
       '24/7 Mimir AI Coach (context-aware chat)',
@@ -292,8 +292,8 @@ export default function LandingScreen() {
         onboarding_complete: false,
       });
 
-      // Attempt to claim Founding 10 free year of Premium
-      let grantedPlan: 'free' | 'premium' = 'free';
+      // Attempt to claim Founding 10 free year of Viking Pro
+      let grantedPlan: 'free' | 'pro' = 'free';
       try {
         const res = await fetch(
           `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/claim-founding-offer`,
@@ -308,7 +308,7 @@ export default function LandingScreen() {
         );
         const claimData = await res.json();
         if (res.ok && claimData?.claimed) {
-          grantedPlan = 'premium';
+          grantedPlan = 'pro';
           if (typeof claimData.remaining === 'number') {
             setSpotsRemaining(claimData.remaining);
           }
@@ -341,7 +341,7 @@ export default function LandingScreen() {
         onboardingComplete: false,
       });
 
-      identifyUser(data.user.id, { plan: grantedPlan, goal, foundingOffer: grantedPlan === 'premium' });
+      identifyUser(data.user.id, { plan: grantedPlan, goal, foundingOffer: grantedPlan === 'pro' });
       trackEvent('landing_signup', { plan: grantedPlan, goal });
 
       router.replace('/onboarding/body');
@@ -399,8 +399,8 @@ export default function LandingScreen() {
         >
           <Crown size={14} color={BRAND.obsidian} />
           <Text style={styles.offerBarText}>
-            FOUNDING 10 OFFER: FIRST 10 SIGN-UPS GET 1 YEAR OF PREMIUM FREE ({spotsRemaining} OF 10
-            SPOTS LEFT) →
+            FOUNDING 10 OFFER: FIRST 10 SIGN-UPS GET 1 YEAR OF VIKING PRO FREE ({spotsRemaining} OF
+            10 SPOTS LEFT) →
           </Text>
         </TouchableOpacity>
 
@@ -492,7 +492,7 @@ export default function LandingScreen() {
               >
                 <Text style={styles.ctaPrimaryText}>
                   {spotsRemaining > 0
-                    ? `CLAIM 1 YEAR PREMIUM FREE (${spotsRemaining}/10 LEFT)`
+                    ? `CLAIM 1 YEAR PRO FREE (${spotsRemaining}/10 LEFT)`
                     : 'START FREE 7-DAY TRIAL'}
                 </Text>
                 <ArrowRight size={17} color={BRAND.obsidian} />
@@ -527,19 +527,20 @@ export default function LandingScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={styles.sectionEyebrow}>FOUNDING WARRIOR OFFER</Text>
                 <Text style={[styles.sectionTitle, !isWide && styles.sectionTitleMobile]}>
-                  FIRST 10 SIGN-UPS GET 1 YEAR OF PREMIUM FREE
+                  FIRST 10 SIGN-UPS GET 1 YEAR OF VIKING PRO FREE
                 </Text>
                 <Text style={styles.sectionLead}>
-                  Normally $89/year. Create your account below to lock in one of the{' '}
-                  {spotsRemaining} remaining Founding Warrior spots—no credit card required.
+                  Normally $149/year. Create your account below to lock in one of the{' '}
+                  {spotsRemaining} remaining Founding Warrior spots (includes Premium + Pro)—no
+                  credit card required.
                 </Text>
 
                 <View style={styles.offerBullets}>
                   {[
+                    '24/7 Mimir AI Coach & Plate Photo Macro Scan (Pro)',
                     'AI meal & workout plans tuned to your macros & GLP-1 wave',
                     '1-tap Battlefield Pivots & AI Salvage My Day',
-                    'GLP-1 Reverse-Diet & Taper Off-Ramp',
-                    'Full Muscle Armor, 21-Day Adaptive TDEE & Warband Raids',
+                    'GLP-1 Reverse-Diet Taper, Adaptive TDEE & Warband Raids',
                   ].map((b) => (
                     <View key={b} style={styles.tierFeatureRow}>
                       <Check size={16} color={BRAND.gold} />
